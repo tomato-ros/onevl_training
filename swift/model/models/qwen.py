@@ -1092,6 +1092,52 @@ register_model(
         tags=['vision', 'video']))
 
 
+class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
+    """Loader that wraps Qwen3-VL with latent CoT training support.
+
+    Latent CoT configuration is read from LATENT_COT_* environment variables.
+    """
+
+    def get_model(self, model_dir: str, config, processor, model_kwargs) -> PreTrainedModel:
+        model = super().get_model(model_dir, config, processor, model_kwargs)
+
+        from swift.model.models.latent_cot import LatentCoTConfig, patch_model_for_latent_cot
+        aux_path = get_env_args('LATENT_COT_AUX_MODEL_PATH', str, None)
+        vis_aux_path = get_env_args('LATENT_COT_VISUAL_AUX_MODEL_PATH', str, None)
+        latent_config = LatentCoTConfig(
+            c_thought=get_env_args('LATENT_COT_C_THOUGHT', int, 2),
+            c_thought_visual=get_env_args('LATENT_COT_C_THOUGHT_VISUAL', int, 2),
+            aux_model_path=aux_path or None,
+            visual_aux_model_path=vis_aux_path or None,
+            explain_loss_weight=get_env_args('LATENT_COT_EXPLAIN_LOSS_WEIGHT', float, 1.0),
+            visual_explain_loss_weight=get_env_args('LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT', float, 1.0),
+            aux_visual_condition=get_env_args('LATENT_COT_AUX_VISUAL_CONDITION', bool, False),
+            use_separate_visual_latent_tokens=get_env_args(
+                'LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS', bool, False),
+            freeze_visual_aux_decoder=get_env_args('LATENT_COT_FREEZE_VISUAL_AUX_DECODER', bool, False),
+            freeze_aux_decoder=get_env_args('LATENT_COT_FREEZE_AUX_DECODER', bool, False),
+        )
+        patch_model_for_latent_cot(model, processor, latent_config)
+        return model
+
+
+register_model(
+    ModelMeta(
+        MLLMModelType.qwen3_vl_latent_cot, [
+            ModelGroup([
+                Model('Qwen/Qwen3-VL-2B-Instruct', 'Qwen/Qwen3-VL-2B-Instruct'),
+                Model('Qwen/Qwen3-VL-8B-Instruct', 'Qwen/Qwen3-VL-8B-Instruct'),
+                Model('Qwen/Qwen3-VL-2B-Thinking', 'Qwen/Qwen3-VL-2B-Thinking'),
+                Model('Qwen/Qwen3-VL-8B-Thinking', 'Qwen/Qwen3-VL-8B-Thinking'),
+            ], TemplateType.qwen3_vl_latent_cot),
+        ],
+        Qwen3VLLatentCoTLoader,
+        model_arch=ModelArch.qwen3_vl,
+        architectures=['Qwen3VLForConditionalGeneration'],
+        requires=['transformers>=4.57', 'qwen_vl_utils>=0.0.14', 'decord'],
+        tags=['vision', 'video']))
+
+
 class Qwen3VLMoeLoader(Qwen3VLLoader):
 
     def get_model(self, model_dir: str, config, processor, model_kwargs) -> PreTrainedModel:

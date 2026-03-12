@@ -1,63 +1,51 @@
 set -x
 
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
-
-PARTITION=${PARTITION:-"Intern5"}
-GPUS=${GPUS:-8}
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 export PYTHONUNBUFFERED=1
-export MASTER_PORT=34229
 export TF_CPP_MIN_LOG_LEVEL=3
-export LAUNCHER=pytorch
 export NCCL_IB_DISABLE=1
 export NCCL_P2P_DISABLE=0
 export NCCL_SHM_DISABLE=0
 
-# OUTPUT_DIR=./internvl_sft
+# ---------- Latent CoT configuration ----------
+export LATENT_COT_C_THOUGHT=6
+export LATENT_COT_C_THOUGHT_VISUAL=6
+export LATENT_COT_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
+export LATENT_COT_VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
+export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
+export LATENT_COT_AUX_VISUAL_CONDITION=true
+export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=false
+# Freeze aux decoders to reduce memory; set to false if multi-GPU and enough memory
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=true
+export LATENT_COT_FREEZE_AUX_DECODER=true
+# -----------------------------------------------
 
-if [ ! -d "$OUTPUT_DIR" ]; then
-  mkdir -p "$OUTPUT_DIR"
-fi
 mkdir -p logs
-export LOCAL_RANK=${LOCAL_RANK:-0} 
-export TORCH_EXTENSIONS_DIR="${OUTPUT_DIR}/torch_ext_$LOCAL_RANK"
 
-NNODES=${MLP_WORKER_NUM:-1}
-NODE_RANK=${MLP_ROLE_INDEX:-0}
-MASTER_ADDR=${MLP_WORKER_0_HOST:-"127.0.0.1"}
-MASTER_PORT=${MLP_WORKER_0_PORT:-$(shuf -i 10000-50000 -n1)}
-
-/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/torchrun \
-    --nnodes=$NNODES \
-    --node_rank=$NODE_RANK \
-    --master_addr=$MASTER_ADDR \
-    --nproc_per_node=${GPUS}  \
-    --master_port=$MASTER_PORT \
-  swift/cli/sft.py \
-    --model /e2e-data/evad-tech-vla/lujinghui/models/InternVL3-8B \
+# Single-GPU debug run. For multi-GPU, replace with:
+#   torchrun --nproc_per_node=N swift/cli/sft.py ...
+CUDA_VISIBLE_DEVICES=0 python swift/cli/sft.py \
+    --model /e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent \
+    --model_type qwen3_vl_latent_cot \
     --train_type full \
-    --freeze_vit False \
-    --freeze_aligner False \
-    --dataset '/e2e-data/evad-tech-vla/lujinghui/lujinghui/datasets/navsim/dataset_navsim_traj1_new.jsonl' \
+    --dataset 'data/navsim_latent_cot_100.jsonl' \
     --torch_dtype bfloat16 \
-    --num_train_epochs 6 \
-    --per_device_train_batch_size 2 \
+    --num_train_epochs 2 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --learning_rate 4e-5 \
-    --target_modules all-linear \
-    --lr_scheduler_type "cosine" \
-    --gradient_accumulation_steps 2 \
-    --save_steps 400 \
-    --save_total_limit 5 \
-    --logging_steps 5 \
-    --max_length 3560 \
-    --warmup_ratio 0.1 \
-    --dataloader_num_workers 4 \
-    --model_author swift \
-    --model_name swift-robot \
-    --model_type internvl2_5 \
-    --output_dir outputs/internvl_8B_sft \
-  2>&1 | tee logs/internvl_8B_sft.log
-    # --async_generate true \
-    # --num_infer_workers 2 \
-    # --system 'examples/train/grpo/prompt_baseline.txt'
+    --loss_type latent_cot \
+    --lr_scheduler_type cosine \
+    --gradient_accumulation_steps 16 \
+    --save_steps 500 \
+    --save_total_limit 2 \
+    --logging_steps 1 \
+    --max_length 4096 \
+    --warmup_ratio 0.05 \
+    --dataloader_num_workers 2 \
+    --output_dir outputs/qwen3_vl_latent_cot_sft \
+    --gradient_checkpointing true \
+    --ddp_find_unused_parameters true \
+    --freeze_parameters _latent_cot_aux_decoder _latent_cot_visual_aux_decoder \
+  2>&1 | tee logs/qwen3_vl_latent_cot_sft.log

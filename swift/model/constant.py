@@ -145,6 +145,7 @@ class MLLMModelType:
     qwen3_vl_moe = 'qwen3_vl_moe'
     qwen3_vl_emb = 'qwen3_vl_emb'
     qwen3_vl_reranker = 'qwen3_vl_reranker'
+    qwen3_vl_latent_cot = 'qwen3_vl_latent_cot'
     qwen3_5 = 'qwen3_5'
     qwen3_5_moe = 'qwen3_5_moe'
 

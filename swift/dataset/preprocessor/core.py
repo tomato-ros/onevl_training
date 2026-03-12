@@ -21,6 +21,8 @@ logger = get_logger()
 
 _pair_keys = ['messages', 'images', 'videos', 'audios', 'tools', 'objects']
 
+_extra_passthrough_keys = ['think_steps', 'future_image_tokens']
+
 
 class RowPreprocessor:
     standard_keys = _pair_keys + list(
@@ -30,7 +32,7 @@ class RowPreprocessor:
                                 'label',
                                 'channel',
                                 'margin',
-                            ]
+                            ] + _extra_passthrough_keys
 
     def __init__(self,
                  *,

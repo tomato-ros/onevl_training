@@ -1,0 +1,531 @@
+"""
+Latent Chain-of-Thought (CoT) support for Qwen3-VL in ms-swift.
+
+Ports the CODI/SIM-CoT approach from veomni:
+- Latent tokens replace explicit reasoning in the input
+- Auxiliary decoder(s) reconstruct original reasoning from latent hidden states
+- Visual auxiliary decoder reconstructs future image tokens from latent states
+
+The model is patched in-place: aux decoders and projection layers are added
+as submodules, and forward is monkey-patched to compute the combined loss.
+"""
+
+from dataclasses import dataclass
+from types import MethodType
+from typing import List, Optional
+
+import torch
+import torch.nn as nn
+from torch.nn import CrossEntropyLoss
+
+from swift.utils import get_logger
+
+logger = get_logger()
+
+LATENT_TOKEN = '<|latent|>'
+START_LATENT_TOKEN = '<|start-latent|>'
+END_LATENT_TOKEN = '<|end-latent|>'
+LATENT_VIS_TOKEN = '<|latent-vis|>'
+START_LATENT_VIS_TOKEN = '<|start-latent-vis|>'
+END_LATENT_VIS_TOKEN = '<|end-latent-vis|>'
+
+LATENT_SPECIAL_TOKENS = [
+    START_LATENT_TOKEN, LATENT_TOKEN, END_LATENT_TOKEN,
+    START_LATENT_VIS_TOKEN, LATENT_VIS_TOKEN, END_LATENT_VIS_TOKEN,
+]
+
+
+@dataclass
+class LatentCoTConfig:
+    c_thought: int = 2
+    c_thought_visual: int = 2
+    aux_model_path: Optional[str] = None
+    visual_aux_model_path: Optional[str] = None
+    explain_loss_weight: float = 1.0
+    visual_explain_loss_weight: float = 1.0
+    aux_visual_condition: bool = False
+    use_separate_visual_latent_tokens: bool = False
+    freeze_visual_aux_decoder: bool = False
+    freeze_aux_decoder: bool = False
+
+
+def add_latent_tokens_to_tokenizer(processor):
+    tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
+    existing_tokens = set(tokenizer.get_vocab().keys())
+    new_tokens = [t for t in LATENT_SPECIAL_TOKENS if t not in existing_tokens]
+    if new_tokens:
+        tokenizer.add_tokens(new_tokens, special_tokens=True)
+        logger.info(f'Added {len(new_tokens)} latent special tokens: {new_tokens}')
+    return tokenizer
+
+
+def get_latent_token_ids(tokenizer):
+    return {
+        'latent_token_id': tokenizer.convert_tokens_to_ids(LATENT_TOKEN),
+        'start_latent_id': tokenizer.convert_tokens_to_ids(START_LATENT_TOKEN),
+        'end_latent_id': tokenizer.convert_tokens_to_ids(END_LATENT_TOKEN),
+        'latent_visual_token_id': tokenizer.convert_tokens_to_ids(LATENT_VIS_TOKEN),
+        'start_latent_visual_id': tokenizer.convert_tokens_to_ids(START_LATENT_VIS_TOKEN),
+        'end_latent_visual_id': tokenizer.convert_tokens_to_ids(END_LATENT_VIS_TOKEN),
+    }
+
+
+def _resolve_hidden_size(model):
+    cfg = model.config if hasattr(model, 'config') else None
+    if cfg is None:
+        raise ValueError('Cannot determine hidden_size: model has no config')
+    if hasattr(cfg, 'text_config'):
+        return cfg.text_config.hidden_size
+    return cfg.hidden_size
+
+
+def build_aux_decoder(model_path, torch_dtype=None, device='cpu'):
+    from transformers import AutoConfig, AutoModelForCausalLM
+    if torch_dtype is None:
+        torch_dtype = torch.bfloat16
+
+    config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+    model_type = getattr(config, 'model_type', '')
+
+    if 'qwen3_vl' in model_type:
+        from transformers import Qwen3VLForConditionalGeneration
+        return Qwen3VLForConditionalGeneration.from_pretrained(
+            model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+    if 'qwen2_vl' in model_type:
+        from transformers import Qwen2VLForConditionalGeneration
+        return Qwen2VLForConditionalGeneration.from_pretrained(
+            model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+    return AutoModelForCausalLM.from_pretrained(
+        model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+
+
+def _get_aux_input_embeddings(aux_decoder):
+    if hasattr(aux_decoder, 'model') and hasattr(aux_decoder.model, 'get_input_embeddings'):
+        return aux_decoder.model.get_input_embeddings()
+    return aux_decoder.get_input_embeddings()
+
+
+def _extract_visual_embeds(student_embeds, batch_idx, input_ids, image_token_id, video_token_id=None):
+    dev = student_embeds.device
+    vis_mask = (input_ids[batch_idx] == image_token_id)
+    if video_token_id is not None:
+        vis_mask = vis_mask | (input_ids[batch_idx] == video_token_id)
+    vis_mask = vis_mask.to(dev)
+    if not vis_mask.any():
+        return None
+    return student_embeds[batch_idx][vis_mask]
+
+
+def compute_explain_loss(
+    last_hidden_states, input_ids, latent_lists, explainable_ids_list,
+    batch_size, aux_decoder, latent_proj, c_thought,
+    student_embeds=None, use_visual_condition=False,
+    image_token_id=None, video_token_id=None,
+):
+    if aux_decoder is None or explainable_ids_list is None:
+        return torch.tensor(0.0, device=last_hidden_states.device)
+
+    aux_embedding = _get_aux_input_embeddings(aux_decoder)
+    loss_fct = CrossEntropyLoss(reduction='sum')
+    loss_all = 0.0
+    num_steps = 0
+
+    for b in range(batch_size):
+        if not latent_lists[b]:
+            continue
+
+        vis_embeds = None
+        n_vis = 0
+        if use_visual_condition and student_embeds is not None and image_token_id is not None:
+            vis_embeds = _extract_visual_embeds(
+                student_embeds, b, input_ids, image_token_id, video_token_id)
+            if vis_embeds is not None:
+                n_vis = vis_embeds.shape[0]
+
+        n_latent_groups = len(latent_lists[b]) // c_thought
+        step_ids = explainable_ids_list[b]
+
+        for step_idx in range(min(n_latent_groups, len(step_ids))):
+            start_pos = step_idx * c_thought
+            end_pos = min(start_pos + c_thought, len(latent_lists[b]))
+            latent_positions = latent_lists[b][start_pos:end_pos]
+            latent_embeds = last_hidden_states[b, latent_positions, :]
+
+            if latent_proj is not None:
+                latent_embeds = latent_proj(latent_embeds)
+
+            step_token_ids = step_ids[step_idx]
+            if not step_token_ids or len(step_token_ids) == 0:
+                continue
+
+            step_tensor = torch.tensor(
+                step_token_ids, device=last_hidden_states.device, dtype=torch.long)
+            step_embeds = aux_embedding(step_tensor)
+
+            parts = []
+            if vis_embeds is not None:
+                parts.append(vis_embeds)
+            parts.append(latent_embeds)
+            parts.append(step_embeds)
+            combined_embeds = torch.cat(parts, dim=0).unsqueeze(0)
+
+            prefix_len = n_vis + len(latent_positions)
+            labels_explain = torch.full(
+                (1, combined_embeds.shape[1]), -100,
+                dtype=torch.long, device=last_hidden_states.device)
+            labels_explain[0, prefix_len:] = step_tensor
+
+            attn_mask = torch.ones(
+                (1, combined_embeds.shape[1]),
+                dtype=torch.long, device=last_hidden_states.device)
+
+            aux_outputs = aux_decoder(
+                inputs_embeds=combined_embeds,
+                attention_mask=attn_mask,
+                use_cache=False,
+            )
+
+            logits = aux_outputs.logits if hasattr(aux_outputs, 'logits') else aux_outputs[0]
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels_explain[..., 1:].contiguous()
+
+            effective_tokens = (shift_labels != -100).sum()
+            if effective_tokens > 0:
+                step_loss = loss_fct(
+                    shift_logits.view(-1, shift_logits.size(-1)),
+                    shift_labels.view(-1))
+                loss_all += step_loss / effective_tokens
+                num_steps += 1
+
+    if num_steps > 0:
+        loss_all = loss_all / num_steps
+    return loss_all
+
+
+def compute_visual_explain_loss(
+    last_hidden_states, input_ids, latent_lists, visual_ids_list,
+    batch_size, visual_aux_decoder, visual_latent_proj, c_thought_visual,
+    student_embeds=None, use_visual_condition=False,
+    image_token_id=None, video_token_id=None,
+):
+    if visual_aux_decoder is None or visual_ids_list is None:
+        return torch.tensor(0.0, device=last_hidden_states.device)
+
+    vis_aux_embedding = _get_aux_input_embeddings(visual_aux_decoder)
+    loss_fct = CrossEntropyLoss(reduction='sum')
+    loss_all = 0.0
+    num_items = 0
+
+    for b in range(batch_size):
+        if not latent_lists[b]:
+            continue
+        vis_token_ids = visual_ids_list[b] if b < len(visual_ids_list) else None
+        if not vis_token_ids or len(vis_token_ids) == 0:
+            continue
+
+        latent_positions = latent_lists[b]
+        latent_embeds = last_hidden_states[b, latent_positions, :]
+
+        n_latent = latent_embeds.shape[0]
+        n_use = (n_latent // c_thought_visual) * c_thought_visual
+        if n_use > 0:
+            latent_embeds = latent_embeds[:n_use]
+            latent_embeds = latent_embeds.view(
+                -1, c_thought_visual, latent_embeds.size(-1)).mean(dim=1)
+        else:
+            continue
+
+        if visual_latent_proj is not None:
+            latent_embeds = visual_latent_proj(latent_embeds)
+
+        vis_embeds = None
+        n_vis = 0
+        if use_visual_condition and student_embeds is not None and image_token_id is not None:
+            vis_embeds = _extract_visual_embeds(
+                student_embeds, b, input_ids, image_token_id, video_token_id)
+            if vis_embeds is not None:
+                n_vis = vis_embeds.shape[0]
+
+        target_tensor = torch.tensor(
+            vis_token_ids, device=last_hidden_states.device, dtype=torch.long)
+        target_embeds = vis_aux_embedding(target_tensor)
+
+        parts = []
+        if vis_embeds is not None:
+            parts.append(vis_embeds)
+        parts.append(latent_embeds)
+        parts.append(target_embeds)
+        combined_embeds = torch.cat(parts, dim=0).unsqueeze(0)
+
+        n_latent_cond = latent_embeds.shape[0]
+        prefix_len = n_vis + n_latent_cond
+        labels = torch.full(
+            (1, combined_embeds.shape[1]), -100,
+            dtype=torch.long, device=last_hidden_states.device)
+        labels[0, prefix_len:] = target_tensor
+
+        attn_mask = torch.ones(
+            (1, combined_embeds.shape[1]),
+            dtype=torch.long, device=last_hidden_states.device)
+
+        vis_aux_outputs = visual_aux_decoder(
+            inputs_embeds=combined_embeds,
+            attention_mask=attn_mask,
+            use_cache=False,
+        )
+
+        logits = vis_aux_outputs.logits if hasattr(vis_aux_outputs, 'logits') else vis_aux_outputs[0]
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+
+        effective_tokens = (shift_labels != -100).sum()
+        if effective_tokens > 0:
+            item_loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)),
+                shift_labels.view(-1))
+            loss_all += item_loss / effective_tokens
+            num_items += 1
+
+    if num_items > 0:
+        loss_all = loss_all / num_items
+    return loss_all
+
+
+def _tokenize_think_steps(think_steps_text, tokenizer):
+    eos_id = tokenizer.eos_token_id
+    if isinstance(think_steps_text, str):
+        think_steps_text = [think_steps_text]
+    result = []
+    for text in think_steps_text:
+        if text and str(text).strip():
+            steps = [str(text)]
+            step_ids = [
+                tokenizer.encode(s, add_special_tokens=False) + [eos_id]
+                for s in steps if s.strip()
+            ]
+            result.append(step_ids)
+        else:
+            result.append([])
+    return result
+
+
+def _tokenize_visual_targets(visual_text, visual_tokenizer):
+    eos_id = visual_tokenizer.eos_token_id
+    if isinstance(visual_text, str):
+        visual_text = [visual_text]
+    result = []
+    for text in visual_text:
+        if text and str(text).strip():
+            ids = visual_tokenizer.encode(str(text), add_special_tokens=False)
+            if eos_id is not None:
+                ids = ids + [eos_id]
+            result.append(ids)
+        else:
+            result.append([])
+    return result
+
+
+def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
+    """Patch a Qwen3-VL model in-place for latent CoT training."""
+    tokenizer = add_latent_tokens_to_tokenizer(processor)
+    model.resize_token_embeddings(len(tokenizer))
+
+    token_ids = get_latent_token_ids(tokenizer)
+    model._latent_cot_config = config
+    model._latent_token_ids = token_ids
+    model._processor_ref = processor
+
+    base_hidden_size = _resolve_hidden_size(model)
+
+    if config.aux_model_path:
+        logger.info(f'Building aux_decoder from: {config.aux_model_path}')
+        aux_decoder = build_aux_decoder(config.aux_model_path, device='cpu')
+        aux_hidden = _resolve_hidden_size(aux_decoder)
+        latent_proj = nn.Sequential(
+            nn.Linear(base_hidden_size, base_hidden_size),
+            nn.GELU(),
+            nn.Linear(base_hidden_size, aux_hidden),
+            nn.LayerNorm(aux_hidden),
+        )
+        model.add_module('_latent_cot_aux_decoder', aux_decoder)
+        model.add_module('_latent_cot_latent_proj', latent_proj)
+
+        if config.freeze_aux_decoder:
+            for param in aux_decoder.parameters():
+                param.requires_grad = False
+    else:
+        model._latent_cot_aux_decoder = None
+        model._latent_cot_latent_proj = None
+
+    if config.visual_aux_model_path:
+        logger.info(f'Building visual_aux_decoder from: {config.visual_aux_model_path}')
+        vis_aux_decoder = build_aux_decoder(config.visual_aux_model_path, device='cpu')
+        vis_aux_hidden = _resolve_hidden_size(vis_aux_decoder)
+        visual_latent_proj = nn.Sequential(
+            nn.Linear(base_hidden_size, base_hidden_size),
+            nn.GELU(),
+            nn.Linear(base_hidden_size, vis_aux_hidden),
+            nn.LayerNorm(vis_aux_hidden),
+        )
+        model.add_module('_latent_cot_visual_aux_decoder', vis_aux_decoder)
+        model.add_module('_latent_cot_visual_latent_proj', visual_latent_proj)
+
+        if config.freeze_visual_aux_decoder:
+            for param in vis_aux_decoder.parameters():
+                param.requires_grad = False
+
+        from transformers import AutoTokenizer
+        model._latent_cot_visual_aux_tokenizer = AutoTokenizer.from_pretrained(
+            config.visual_aux_model_path, trust_remote_code=True)
+    else:
+        model._latent_cot_visual_aux_decoder = None
+        model._latent_cot_visual_latent_proj = None
+        model._latent_cot_visual_aux_tokenizer = None
+
+    model._origin_forward_for_latent_cot = model.forward
+    model.forward = MethodType(_latent_cot_forward, model)
+
+    logger.info('Model patched for latent CoT training.')
+    return model
+
+
+def _latent_cot_forward(
+    self, input_ids=None, attention_mask=None, position_ids=None,
+    labels=None, pixel_values=None, pixel_values_videos=None,
+    image_grid_thw=None, video_grid_thw=None,
+    think_steps=None, future_image_tokens=None,
+    **kwargs,
+):
+    """Patched forward that computes latent CoT aux losses.
+
+    Works in two modes depending on whether labels are present:
+    - With labels (no --loss_type): model computes CE internally, we add aux losses.
+    - Without labels (--loss_type latent_cot): we compute hidden states + aux losses,
+      store them on outputs for the loss function to combine with CE loss.
+    """
+    config = self._latent_cot_config
+    token_ids = self._latent_token_ids
+    processor = getattr(self, '_processor_ref', None)
+
+    has_latent = (input_ids is not None
+                  and (input_ids == token_ids['latent_token_id']).any())
+
+    if not has_latent:
+        return self._origin_forward_for_latent_cot(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            labels=labels,
+            pixel_values=pixel_values,
+            pixel_values_videos=pixel_values_videos,
+            image_grid_thw=image_grid_thw,
+            video_grid_thw=video_grid_thw,
+            **kwargs,
+        )
+
+    need_hidden = ((think_steps is not None and
+                    getattr(self, '_latent_cot_aux_decoder', None) is not None)
+                   or (future_image_tokens is not None and
+                       getattr(self, '_latent_cot_visual_aux_decoder', None) is not None))
+
+    outputs = self._origin_forward_for_latent_cot(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        position_ids=position_ids,
+        labels=labels,
+        pixel_values=pixel_values,
+        pixel_values_videos=pixel_values_videos,
+        image_grid_thw=image_grid_thw,
+        video_grid_thw=video_grid_thw,
+        output_hidden_states=need_hidden,
+        **kwargs,
+    )
+
+    dev = (outputs.loss.device if outputs.loss is not None
+           else (input_ids.device if input_ids is not None else 'cuda'))
+    student_ce_loss = outputs.loss if outputs.loss is not None else None
+
+    explain_loss = torch.tensor(0.0, device=dev)
+    visual_explain_loss = torch.tensor(0.0, device=dev)
+
+    aux_decoder = getattr(self, '_latent_cot_aux_decoder', None)
+    latent_proj = getattr(self, '_latent_cot_latent_proj', None)
+    visual_aux_decoder = getattr(self, '_latent_cot_visual_aux_decoder', None)
+    visual_latent_proj = getattr(self, '_latent_cot_visual_latent_proj', None)
+
+    if need_hidden and hasattr(outputs, 'hidden_states') and outputs.hidden_states is not None:
+        batch_size = input_ids.size(0)
+        last_hidden = outputs.hidden_states[-1]
+
+        latent_id = token_ids['latent_token_id']
+        latent_lists = []
+        for b in range(batch_size):
+            positions = (input_ids[b] == latent_id).nonzero(as_tuple=True)[0].tolist()
+            latent_lists.append(positions)
+
+        use_vis_cond = config.aux_visual_condition
+        image_token_id = getattr(self.config, 'image_token_id', None)
+        video_token_id = getattr(self.config, 'video_token_id', None)
+
+        student_embeds = None
+        if use_vis_cond:
+            embed_fn = (self.model.get_input_embeddings()
+                        if hasattr(self, 'model')
+                        else self.get_input_embeddings())
+            student_embeds = embed_fn(input_ids)
+
+        if aux_decoder is not None and think_steps is not None:
+            tokenizer = (processor.tokenizer
+                         if processor and hasattr(processor, 'tokenizer')
+                         else processor)
+            explainable_ids_list = _tokenize_think_steps(think_steps, tokenizer)
+
+            explain_loss = compute_explain_loss(
+                last_hidden, input_ids, latent_lists, explainable_ids_list,
+                batch_size, aux_decoder, latent_proj, config.c_thought,
+                student_embeds=student_embeds,
+                use_visual_condition=use_vis_cond,
+                image_token_id=image_token_id,
+                video_token_id=video_token_id,
+            )
+            explain_loss = explain_loss * config.explain_loss_weight
+
+        if visual_aux_decoder is not None and future_image_tokens is not None:
+            vis_tokenizer = getattr(self, '_latent_cot_visual_aux_tokenizer', None)
+            if vis_tokenizer is not None:
+                visual_ids_list = _tokenize_visual_targets(
+                    future_image_tokens, vis_tokenizer)
+
+                vis_latent_lists = latent_lists
+                if config.use_separate_visual_latent_tokens:
+                    vis_latent_id = token_ids['latent_visual_token_id']
+                    vis_latent_lists = []
+                    for b in range(batch_size):
+                        positions = (input_ids[b] == vis_latent_id).nonzero(
+                            as_tuple=True)[0].tolist()
+                        vis_latent_lists.append(positions)
+
+                visual_explain_loss = compute_visual_explain_loss(
+                    last_hidden, input_ids, vis_latent_lists, visual_ids_list,
+                    batch_size, visual_aux_decoder, visual_latent_proj,
+                    config.c_thought_visual,
+                    student_embeds=student_embeds,
+                    use_visual_condition=use_vis_cond,
+                    image_token_id=image_token_id,
+                    video_token_id=video_token_id,
+                )
+                visual_explain_loss = (visual_explain_loss
+                                       * config.visual_explain_loss_weight)
+
+    # Store aux losses on the model itself because accelerate's convert_to_fp32
+    # reconstructs ModelOutput from declared fields only, dropping dynamic attrs.
+    self._latent_cot_cache = {
+        'student_ce_loss': student_ce_loss,
+        'explain_loss': explain_loss,
+        'visual_explain_loss': visual_explain_loss,
+    }
+
+    if student_ce_loss is not None:
+        outputs.loss = student_ce_loss + explain_loss + visual_explain_loss
+
+    return outputs

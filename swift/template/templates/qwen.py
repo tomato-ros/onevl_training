@@ -558,6 +558,67 @@ register_template(
         MLLMTemplateType.qwen3_vl, template_cls=Qwen3VLTemplate, default_system=None, thinking_prefix='<think>\n'))
 
 
+class Qwen3VLLatentCoTTemplate(Qwen3VLTemplate):
+    """Qwen3-VL template with latent CoT support.
+
+    Masks latent token positions in labels and passes through think_steps /
+    future_image_tokens from dataset extra_kwargs so that the patched model
+    forward can compute auxiliary decoder losses.
+    """
+
+    LATENT_TOKENS = {
+        '<|latent|>', '<|start-latent|>', '<|end-latent|>',
+        '<|latent-vis|>', '<|start-latent-vis|>', '<|end-latent-vis|>',
+    }
+
+    def _encode(self, inputs: StdTemplateInputs) -> Dict[str, Any]:
+        encoded = super()._encode(inputs)
+
+        input_ids = encoded['input_ids']
+        labels = encoded.get('labels')
+        if labels is not None:
+            tokenizer = self.tokenizer
+            latent_ids = set()
+            for tok in self.LATENT_TOKENS:
+                tid = tokenizer.convert_tokens_to_ids(tok)
+                if tid != tokenizer.unk_token_id:
+                    latent_ids.add(tid)
+            if latent_ids:
+                for i, tid in enumerate(input_ids):
+                    if tid in latent_ids:
+                        labels[i] = -100
+                encoded['labels'] = labels
+
+        for key in ('think_steps', 'future_image_tokens'):
+            val = inputs.extra_kwargs.get(key)
+            if val is not None:
+                encoded[key] = val
+
+        return encoded
+
+    def _data_collator(self, batch: List[Dict[str, Any]], *, padding_to: Optional[int] = None) -> Dict[str, Any]:
+        latent_fields = {}
+        for key in ('think_steps', 'future_image_tokens'):
+            values = [b.pop(key, None) for b in batch]
+            if any(v is not None for v in values):
+                latent_fields[key] = values
+
+        res = super()._data_collator(batch, padding_to=padding_to)
+        res.update(latent_fields)
+        return res
+
+    def _post_encode(self, model, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        return inputs
+
+
+register_template(
+    QwenTemplateMeta(
+        MLLMTemplateType.qwen3_vl_latent_cot,
+        template_cls=Qwen3VLLatentCoTTemplate,
+        default_system=None,
+        thinking_prefix='<think>\n'))
+
+
 class Qwen3_5Template(Qwen3VLTemplate):
     image_token_id = 248056
     video_token_id = 248057
