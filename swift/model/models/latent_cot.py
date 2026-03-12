@@ -84,19 +84,27 @@ def build_aux_decoder(model_path, torch_dtype=None, device='cpu'):
     if torch_dtype is None:
         torch_dtype = torch.bfloat16
 
+    # device_map is incompatible with DeepSpeed Zero-3; pass None and let
+    # DeepSpeed handle parameter placement via the Zero-3 init context.
+    try:
+        from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+        use_device_map = None if is_deepspeed_zero3_enabled() else device
+    except ImportError:
+        use_device_map = device
+
     config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
     model_type = getattr(config, 'model_type', '')
 
     if 'qwen3_vl' in model_type:
         from transformers import Qwen3VLForConditionalGeneration
         return Qwen3VLForConditionalGeneration.from_pretrained(
-            model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+            model_path, torch_dtype=torch_dtype, device_map=use_device_map, trust_remote_code=True)
     if 'qwen2_vl' in model_type:
         from transformers import Qwen2VLForConditionalGeneration
         return Qwen2VLForConditionalGeneration.from_pretrained(
-            model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+            model_path, torch_dtype=torch_dtype, device_map=use_device_map, trust_remote_code=True)
     return AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=torch_dtype, device_map=device, trust_remote_code=True)
+        model_path, torch_dtype=torch_dtype, device_map=use_device_map, trust_remote_code=True)
 
 
 def _get_aux_input_embeddings(aux_decoder):
