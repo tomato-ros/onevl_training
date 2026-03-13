@@ -89,6 +89,30 @@ def get_aux_input_embeddings(aux_decoder):
     return aux_decoder.get_input_embeddings()
 
 
+def call_aux_decoder_lm(aux_decoder, inputs_embeds, use_cache=False):
+    """Call the aux decoder's language model directly, bypassing the VL wrapper.
+
+    Qwen3VLForConditionalGeneration.forward -> Qwen3VLModel.forward calls
+    get_rope_index(input_ids, ...) which crashes when input_ids is None.
+    By calling the inner language_model + lm_head directly, we avoid this.
+    For non-VL models (AutoModelForCausalLM), we fall back to the normal call.
+    """
+    if (hasattr(aux_decoder, 'model')
+            and hasattr(aux_decoder.model, 'language_model')
+            and hasattr(aux_decoder, 'lm_head')):
+        lm_out = aux_decoder.model.language_model(
+            inputs_embeds=inputs_embeds, use_cache=use_cache)
+        hidden = lm_out[0]
+        logits = aux_decoder.lm_head(hidden)
+
+        class _AuxOut:
+            pass
+        out = _AuxOut()
+        out.logits = logits
+        return out
+    return aux_decoder(inputs_embeds=inputs_embeds, use_cache=use_cache)
+
+
 def extract_visual_embeds(student_embeds, input_ids, image_token_id, video_token_id=None):
     vis_mask = (input_ids == image_token_id)
     if video_token_id is not None:
@@ -140,7 +164,7 @@ def decode_latent_with_aux(
         generated_ids = []
         cur_embeds = combined
         for _ in range(max_explain_tokens):
-            out = aux_decoder(inputs_embeds=cur_embeds, use_cache=False)
+            out = call_aux_decoder_lm(aux_decoder, cur_embeds, use_cache=False)
             logits = out.logits if hasattr(out, 'logits') else out[0]
             next_id = logits[:, -1, :].argmax(dim=-1)
             generated_ids.append(next_id.item())
@@ -216,7 +240,7 @@ def decode_latent_with_visual_aux(
         cur_embeds = combined
         eos_id = vis_aux_tokenizer.eos_token_id
         for _ in range(max_visual_tokens):
-            out = visual_aux_decoder(inputs_embeds=cur_embeds, use_cache=False)
+            out = call_aux_decoder_lm(visual_aux_decoder, cur_embeds, use_cache=False)
             logits = out.logits if hasattr(out, 'logits') else out[0]
             next_id = logits[:, -1, :].argmax(dim=-1)
             generated_ids.append(next_id.item())

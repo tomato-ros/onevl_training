@@ -19,7 +19,7 @@ TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim
 OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/latent_qwen3_vl/qwen3_vl_infer_all_merged.json
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-INFER_SCRIPT="${SCRIPT_DIR}/qwen3_vl_infer_onevl.py"
+INFER_SCRIPT="${SCRIPT_DIR}/qwen3_vl_infer.py"
 
 # ---- Multi-node: same as train.sh (MLP_WORKER_NUM, MLP_ROLE_INDEX) ----
 NNODES=${MLP_WORKER_NUM:-1}

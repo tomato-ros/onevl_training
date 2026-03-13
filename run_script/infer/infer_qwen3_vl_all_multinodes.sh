@@ -24,7 +24,7 @@ MAX_NEW_TOKENS=1024
 
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
 # Requires AUX_MODEL_PATH to be set.
-DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
+DECODER_EXPLAIN=${DECODER_EXPLAIN:-true}
 AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"}
 AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-true}
 C_THOUGHT=${C_THOUGHT:-6}
