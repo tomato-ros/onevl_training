@@ -14,9 +14,10 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed/v0-20260312-150448/checkpoint-3228
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-1500_1
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
-OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed/v0-20260312-150448/checkpoint-3228/qwen3_vl_infer_onevl_merged.json
+OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-1500_1/infer_results/qwen3_vl_infer_onevl_merged.json
+OUTPUT_PATH_EVAL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-1500_1/infer_results/qwen3_vl_infer_onevl_merged_eval.json
 
 # ---- OneVL / Latent CoT hyperparameters ----
 NUM_LATENT=6
@@ -38,7 +39,7 @@ C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-6}
 MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-512}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-INFER_SCRIPT="${SCRIPT_DIR}/qwen3_vl_infer_onevl.py"
+INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer_onevl.py"
 
 # Build extra flags for decoder explain
 EXTRA_FLAGS=""
@@ -191,3 +192,8 @@ print(f'Merged {len(merged)} samples from {len(shards)} shards -> ${OUTPUT_PATH}
 
 rm -rf "${SPLIT_DIR}"
 echo "=== Done. Output saved to ${OUTPUT_PATH} ==="
+
+## Step 5: Convert to eval format
+$PYTHON "${SCRIPT_DIR}/convert_to_eval.py" \
+    --input_path "${OUTPUT_PATH}" \
+    --output_path "${OUTPUT_PATH_EVAL}"
