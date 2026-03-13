@@ -578,16 +578,20 @@ class Qwen3VLLatentCoTTemplate(Qwen3VLTemplate):
         labels = encoded.get('labels')
         if labels is not None:
             tokenizer = self.tokenizer
-            latent_ids = set()
-            for tok in self.LATENT_TOKENS:
-                tid = tokenizer.convert_tokens_to_ids(tok)
-                if tid != tokenizer.unk_token_id:
-                    latent_ids.add(tid)
-            if latent_ids:
-                for i, tid in enumerate(input_ids):
-                    if tid in latent_ids:
-                        labels[i] = -100
-                encoded['labels'] = labels
+            probe_id = tokenizer.convert_tokens_to_ids('<|latent|>')
+            if probe_id != tokenizer.unk_token_id:
+                latent_ids = set()
+                for tok in self.LATENT_TOKENS:
+                    tid = tokenizer.convert_tokens_to_ids(tok)
+                    if tid != tokenizer.unk_token_id:
+                        latent_ids.add(tid)
+                if latent_ids:
+                    for i, tid in enumerate(input_ids):
+                        if tid in latent_ids:
+                            labels[i] = -100
+            else:
+                self._mask_latent_region_by_pattern(input_ids, labels, tokenizer)
+            encoded['labels'] = labels
 
         for key in ('think_steps', 'future_image_tokens'):
             val = inputs.extra_kwargs.get(key)
@@ -595,6 +599,25 @@ class Qwen3VLLatentCoTTemplate(Qwen3VLTemplate):
                 encoded[key] = val
 
         return encoded
+
+    def _mask_latent_region_by_pattern(self, input_ids, labels, tokenizer):
+        """Mask labels for the full latent region when markers are sub-tokenized.
+
+        Finds the ``latent`` keyword token, then expands outward through
+        contiguous marker-component tokens to cover the whole
+        ``<|start-latent|>...<|end-latent|>`` block.
+        """
+        from swift.model.models.latent_cot import (
+            find_latent_mask_region, _get_marker_component_ids, _get_latent_pattern_ids)
+
+        pat = _get_latent_pattern_ids(tokenizer)
+        lkw = pat['latent_keyword_id']
+        if lkw is None:
+            return
+        marker_ids = _get_marker_component_ids(tokenizer)
+        mask_positions = find_latent_mask_region(input_ids, marker_ids, lkw)
+        for i in mask_positions:
+            labels[i] = -100
 
     def _data_collator(self, batch: List[Dict[str, Any]], *, padding_to: Optional[int] = None) -> Dict[str, Any]:
         latent_fields = {}

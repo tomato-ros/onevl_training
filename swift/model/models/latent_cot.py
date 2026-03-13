@@ -47,15 +47,18 @@ class LatentCoTConfig:
     use_separate_visual_latent_tokens: bool = False
     freeze_visual_aux_decoder: bool = False
     freeze_aux_decoder: bool = False
+    tokens_as_special: bool = True
+    use_original_vocab: bool = False
 
 
-def add_latent_tokens_to_tokenizer(processor):
+def add_latent_tokens_to_tokenizer(processor, as_special_tokens: bool = True):
     tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
     existing_tokens = set(tokenizer.get_vocab().keys())
     new_tokens = [t for t in LATENT_SPECIAL_TOKENS if t not in existing_tokens]
     if new_tokens:
-        tokenizer.add_tokens(new_tokens, special_tokens=True)
-        logger.info(f'Added {len(new_tokens)} latent special tokens: {new_tokens}')
+        tokenizer.add_tokens(new_tokens, special_tokens=as_special_tokens)
+        kind = 'special' if as_special_tokens else 'regular'
+        logger.info(f'Added {len(new_tokens)} latent tokens as {kind} tokens: {new_tokens}')
     return tokenizer
 
 
@@ -333,12 +336,109 @@ def _tokenize_visual_targets(visual_text, visual_tokenizer):
     return result
 
 
+def _get_latent_pattern_ids(tokenizer):
+    """Pre-compute token IDs for pattern-matching latent markers in original vocab mode.
+
+    Returns a dict with key anchor IDs used to locate latent regions:
+      - latent_keyword_id: the single-token ID for the word "latent"
+      - pipe_id: the single-token ID for "|"
+      - vis_suffix_id: the single-token ID for "-vis"
+    """
+    def _single_id(text):
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        return enc[0] if len(enc) == 1 else None
+
+    return {
+        'latent_keyword_id': _single_id('latent'),
+        'pipe_id': _single_id('|'),
+        'vis_suffix_id': _single_id('-vis'),
+    }
+
+
+def _get_marker_component_ids(tokenizer):
+    """Get the set of token IDs that form latent marker strings.
+
+    Used to expand from a ``latent`` keyword position outward to cover the
+    full ``<|start-latent|>...<|end-latent|>`` region for label masking.
+    """
+    texts = ['<', '>', '|', '><', 'latent', 'start', 'end', '-lat', 'ent', '-vis']
+    ids = set()
+    for text in texts:
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        if len(enc) == 1:
+            ids.add(enc[0])
+    return ids
+
+
+def find_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id):
+    """Find positions of ``<|latent|>`` (not ``<|latent-vis|>``) via the
+    ``| latent |`` sub-token pattern.  Returns the index of the *keyword*
+    token for each match, giving exactly one position per ``<|latent|>``.
+    """
+    positions = []
+    n = len(ids_list)
+    for i in range(1, n - 1):
+        if (ids_list[i] == latent_keyword_id
+                and ids_list[i - 1] == pipe_id
+                and ids_list[i + 1] == pipe_id):
+            positions.append(i)
+    return positions
+
+
+def find_visual_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id, vis_suffix_id):
+    """Find positions of ``<|latent-vis|>`` via the ``| latent -vis`` pattern."""
+    if vis_suffix_id is None:
+        return []
+    positions = []
+    n = len(ids_list)
+    for i in range(1, n - 1):
+        if (ids_list[i] == latent_keyword_id
+                and ids_list[i - 1] == pipe_id
+                and ids_list[i + 1] == vis_suffix_id):
+            positions.append(i)
+    return positions
+
+
+def find_latent_mask_region(ids_list, marker_component_ids, latent_keyword_id):
+    """Return the set of positions to mask (label=-100) for all latent marker
+    regions.  Strategy: find every ``latent`` keyword occurrence, expand
+    outward through contiguous marker-component tokens.
+    """
+    keyword_positions = [i for i, tid in enumerate(ids_list) if tid == latent_keyword_id]
+    if not keyword_positions:
+        return set()
+
+    mask = set()
+    for pos in keyword_positions:
+        if pos in mask:
+            continue
+        start = pos
+        while start > 0 and ids_list[start - 1] in marker_component_ids:
+            start -= 1
+        end = pos
+        while end < len(ids_list) - 1 and ids_list[end + 1] in marker_component_ids:
+            end += 1
+        mask.update(range(start, end + 1))
+    return mask
+
+
 def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
     """Patch a Qwen3-VL model in-place for latent CoT training."""
-    tokenizer = add_latent_tokens_to_tokenizer(processor)
-    model.resize_token_embeddings(len(tokenizer))
+    tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
 
-    token_ids = get_latent_token_ids(tokenizer)
+    if config.use_original_vocab:
+        pattern_ids = _get_latent_pattern_ids(tokenizer)
+        model._latent_pattern_ids = pattern_ids
+        model._latent_marker_component_ids = _get_marker_component_ids(tokenizer)
+        logger.info(
+            f'Using original vocab mode — no token additions. '
+            f'Pattern IDs: {pattern_ids}')
+        token_ids = get_latent_token_ids(tokenizer)
+    else:
+        add_latent_tokens_to_tokenizer(tokenizer, as_special_tokens=config.tokens_as_special)
+        model.resize_token_embeddings(len(tokenizer))
+        token_ids = get_latent_token_ids(tokenizer)
+
     model._latent_cot_config = config
     model._latent_token_ids = token_ids
     model._processor_ref = processor
@@ -414,9 +514,16 @@ def _latent_cot_forward(
     config = self._latent_cot_config
     token_ids = self._latent_token_ids
     processor = getattr(self, '_processor_ref', None)
+    use_orig = config.use_original_vocab
 
-    has_latent = (input_ids is not None
-                  and (input_ids == token_ids['latent_token_id']).any())
+    if use_orig:
+        pat = self._latent_pattern_ids
+        lkw, pipe = pat['latent_keyword_id'], pat['pipe_id']
+        has_latent = (input_ids is not None and lkw is not None
+                      and (input_ids == lkw).any())
+    else:
+        has_latent = (input_ids is not None
+                      and (input_ids == token_ids['latent_token_id']).any())
 
     if not has_latent:
         return self._origin_forward_for_latent_cot(
@@ -465,11 +572,32 @@ def _latent_cot_forward(
         batch_size = input_ids.size(0)
         last_hidden = outputs.hidden_states[-1]
 
-        latent_id = token_ids['latent_token_id']
-        latent_lists = []
-        for b in range(batch_size):
-            positions = (input_ids[b] == latent_id).nonzero(as_tuple=True)[0].tolist()
-            latent_lists.append(positions)
+        if use_orig:
+            latent_lists = []
+            for b in range(batch_size):
+                ids_list = input_ids[b].tolist()
+                positions = find_latent_positions_from_pattern(ids_list, lkw, pipe)
+                latent_lists.append(positions)
+            logger.info_once(
+                f'[LatentCoT] original_vocab mode, '
+                f'latent_keyword_id={lkw}, pipe_id={pipe}, '
+                f'batch_size={batch_size}, '
+                f'latent_positions_per_sample={[len(p) for p in latent_lists]}, '
+                f'think_steps={think_steps is not None}, '
+                f'aux_decoder={aux_decoder is not None}')
+        else:
+            latent_id = token_ids['latent_token_id']
+            latent_lists = []
+            for b in range(batch_size):
+                positions = (input_ids[b] == latent_id).nonzero(as_tuple=True)[0].tolist()
+                latent_lists.append(positions)
+            logger.info_once(
+                f'[LatentCoT] single_token mode, '
+                f'latent_token_id={latent_id}, '
+                f'batch_size={batch_size}, '
+                f'latent_positions_per_sample={[len(p) for p in latent_lists]}, '
+                f'think_steps={think_steps is not None}, '
+                f'aux_decoder={aux_decoder is not None}')
 
         use_vis_cond = config.aux_visual_condition
         image_token_id = getattr(self.config, 'image_token_id', None)
@@ -506,11 +634,16 @@ def _latent_cot_forward(
 
                 vis_latent_lists = latent_lists
                 if config.use_separate_visual_latent_tokens:
-                    vis_latent_id = token_ids['latent_visual_token_id']
                     vis_latent_lists = []
                     for b in range(batch_size):
-                        positions = (input_ids[b] == vis_latent_id).nonzero(
-                            as_tuple=True)[0].tolist()
+                        if use_orig:
+                            ids_list = input_ids[b].tolist()
+                            positions = find_visual_latent_positions_from_pattern(
+                                ids_list, lkw, pipe, pat['vis_suffix_id'])
+                        else:
+                            vis_latent_id = token_ids['latent_visual_token_id']
+                            positions = (input_ids[b] == vis_latent_id).nonzero(
+                                as_tuple=True)[0].tolist()
                         vis_latent_lists.append(positions)
 
                 visual_explain_loss = compute_visual_explain_loss(
@@ -535,5 +668,11 @@ def _latent_cot_forward(
 
     if student_ce_loss is not None:
         outputs.loss = student_ce_loss + explain_loss + visual_explain_loss
+        logger.info_once(
+            f'[LatentCoT] First loss breakdown: '
+            f'student_ce={student_ce_loss.item():.4f}, '
+            f'explain={explain_loss.item():.4f}, '
+            f'visual_explain={visual_explain_loss.item():.4f}, '
+            f'total={outputs.loss.item():.4f}')
 
     return outputs

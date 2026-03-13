@@ -66,16 +66,16 @@ swift sft \
     --dataset "${DATASET_PATH}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
-    --num_train_epochs 4 \
+    --num_train_epochs 10 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --learning_rate 4e-5 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
     --gradient_accumulation_steps 1 \
-    --save_steps 20 \
-    --eval_steps 20 \
-    --save_total_limit 3 \
+    --save_steps 500 \
+    --eval_steps 500 \
+    --save_total_limit 4 \
     --eval_metric acc \
     --metric_for_best_model token_acc \
     --load_best_model_at_end true \
@@ -85,7 +85,7 @@ swift sft \
     --weight_decay 0.05 \
     --freeze_vit false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_distributed_e4" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_distributed_e10" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_distributed_e4.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_distributed_e10.log"
