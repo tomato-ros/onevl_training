@@ -24,20 +24,21 @@ export TF_CPP_MIN_LOG_LEVEL=3
 
 # ---------- Distributed settings ----------
 nproc_per_node=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
-NNODES=${NNODES:-1}
-NODE_RANK=${NODE_RANK:-0}
-MASTER_ADDR=${MASTER_ADDR:-127.0.0.1}
-MASTER_PORT=${MASTER_PORT:-29500}
+NNODES=${MLP_WORKER_NUM:-1}
+NODE_RANK=${MLP_ROLE_INDEX:-0}
+MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
+MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
 MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
 AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
-VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_100.jsonl"
+# VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
+VISUAL_AUX_MODEL_PATH=""
+DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full.jsonl"
 
 # ---------- Latent CoT configuration ----------
 export LATENT_COT_C_THOUGHT=6
-export LATENT_COT_C_THOUGHT_VISUAL=6
+export LATENT_COT_C_THOUGHT_VISUAL=0
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
 export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
@@ -74,8 +75,9 @@ swift sft \
     --save_total_limit 2 \
     --logging_steps 5 \
     --max_length 4096 \
-    --warmup_ratio 0.05 \
+    --warmup_steps 100 \
     --weight_decay 0.05 \
+    --freeze_vit false \
     --dataloader_num_workers 4 \
     --output_dir "${SCRIPT_DIR}/outputs/qwen3_vl_latent_cot_distributed" \
     --gradient_checkpointing true \
