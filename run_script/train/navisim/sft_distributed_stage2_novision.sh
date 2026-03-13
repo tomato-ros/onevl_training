@@ -30,8 +30,8 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
-AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
+MODEL_PATH="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/outputs/baseline_answer_latenttoken_qwen_allfinetune/v2-20260313-030404/checkpoint-3228"
+AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH=""
 DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full.jsonl"
@@ -42,15 +42,16 @@ export LATENT_COT_C_THOUGHT=6
 export LATENT_COT_C_THOUGHT_VISUAL=0
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
-export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.5
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.1
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
-export LATENT_COT_AUX_VISUAL_CONDITION=true
+export LATENT_COT_AUX_VISUAL_CONDITION=false
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=false
 # With DeepSpeed zero3 + multi-GPU, memory is sufficient to train aux decoders
 export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
 export LATENT_COT_FREEZE_AUX_DECODER=false
 export LATENT_COT_FREEZE_MAIN_MODEL=false
-export LATENT_COT_LATENT_CE_LOSS=false
+export LATENT_COT_LATENT_CE_LOSS=true
+export LATENT_COT_USE_ORIGINAL_VOCAB=true
 
 # ---------- Launch training ----------
 mkdir -p "${SCRIPT_DIR}/logs"
@@ -64,17 +65,18 @@ MASTER_PORT=$MASTER_PORT \
 swift sft \
     --model "${MODEL_PATH}" \
     --model_type qwen3_vl_latent_cot \
+    --template qwen3_vl_latent_cot \
     --train_type full \
     --dataset "${DATASET_PATH}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
-    --num_train_epochs 10 \
+    --num_train_epochs 1 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --learning_rate 4e-5 \
+    --learning_rate 2e-6 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 2 \
     --save_steps 500 \
     --eval_steps 500 \
     --save_total_limit 4 \
@@ -87,7 +89,7 @@ swift sft \
     --weight_decay 0.05 \
     --freeze_vit false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_distributed_e10" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_novision" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_distributed_e10.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_novision.log"

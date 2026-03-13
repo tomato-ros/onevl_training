@@ -48,6 +48,7 @@ class LatentCoTConfig:
     freeze_visual_aux_decoder: bool = False
     freeze_aux_decoder: bool = False
     freeze_main_model: bool = False
+    latent_ce_loss: bool = False
     tokens_as_special: bool = True
     use_original_vocab: bool = False
 
@@ -180,6 +181,11 @@ def compute_explain_loss(
             parts.append(latent_embeds)
             parts.append(step_embeds)
             combined_embeds = torch.cat(parts, dim=0).unsqueeze(0)
+            logger.info_once(
+                f'[AuxDecoder input] vis_cond={use_visual_condition}, '
+                f'n_vis={n_vis}, n_latent={len(latent_positions)}, '
+                f'n_step_tokens={len(step_token_ids)}, '
+                f'combined_shape={combined_embeds.shape}')
 
             prefix_len = n_vis + len(latent_positions)
             labels_explain = torch.full(

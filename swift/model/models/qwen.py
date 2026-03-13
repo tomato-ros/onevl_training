@@ -1117,6 +1117,7 @@ class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
             freeze_visual_aux_decoder=get_env_args('LATENT_COT_FREEZE_VISUAL_AUX_DECODER', bool, False),
             freeze_aux_decoder=get_env_args('LATENT_COT_FREEZE_AUX_DECODER', bool, False),
             freeze_main_model=get_env_args('LATENT_COT_FREEZE_MAIN_MODEL', bool, False),
+            latent_ce_loss=get_env_args('LATENT_COT_LATENT_CE_LOSS', bool, False),
             tokens_as_special=get_env_args('LATENT_COT_TOKENS_AS_SPECIAL', bool, True),
             use_original_vocab=get_env_args('LATENT_COT_USE_ORIGINAL_VOCAB', bool, False),
         )

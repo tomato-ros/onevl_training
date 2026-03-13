@@ -576,7 +576,8 @@ class Qwen3VLLatentCoTTemplate(Qwen3VLTemplate):
 
         input_ids = encoded['input_ids']
         labels = encoded.get('labels')
-        if labels is not None:
+        latent_ce_loss = get_env_args('LATENT_COT_LATENT_CE_LOSS', bool, False)
+        if labels is not None and not latent_ce_loss:
             tokenizer = self.tokenizer
             probe_id = tokenizer.convert_tokens_to_ids('<|latent|>')
             if probe_id != tokenizer.unk_token_id:
