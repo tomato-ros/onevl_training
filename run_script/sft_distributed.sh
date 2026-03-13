@@ -41,7 +41,7 @@ export LATENT_COT_C_THOUGHT=6
 export LATENT_COT_C_THOUGHT_VISUAL=0
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
-export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.5
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_AUX_VISUAL_CONDITION=true
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=false
@@ -64,13 +64,13 @@ swift sft \
     --train_type full \
     --dataset "${DATASET_PATH}" \
     --torch_dtype bfloat16 \
-    --num_train_epochs 2 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
+    --num_train_epochs 4 \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 4 \
     --learning_rate 4e-5 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --save_steps 500 \
     --save_total_limit 2 \
     --logging_steps 5 \
@@ -79,7 +79,7 @@ swift sft \
     --weight_decay 0.05 \
     --freeze_vit false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/qwen3_vl_latent_cot_distributed" \
+    --output_dir "${SCRIPT_DIR}/outputs/qwen3_vl_latent_cot_distributed_e4" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/qwen3_vl_latent_cot_distributed.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/qwen3_vl_latent_cot_distributed_e4.log"

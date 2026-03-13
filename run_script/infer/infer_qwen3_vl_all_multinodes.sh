@@ -24,7 +24,7 @@ MAX_NEW_TOKENS=1024
 
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
 # Requires AUX_MODEL_PATH to be set.
-DECODER_EXPLAIN=${DECODER_EXPLAIN:-true}
+DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
 AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"}
 AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-true}
 C_THOUGHT=${C_THOUGHT:-6}
@@ -74,6 +74,7 @@ if [ "${NNODES}" -gt 1 ] && [ "${RUN_ID}" = "$$" ]; then
         mkdir -p "${OUTPUT_DIR}"
         RUN_ID=$(date +%s)
         echo "${RUN_ID}" > "${INFER_RUN_ID_FILE}"
+        sync
         echo "Rank 0: set RUN_ID=${RUN_ID} for this multi-node run"
     else
         echo "[Node ${NODE_RANK}] Waiting for RUN_ID file from rank 0 (ensure OUTPUT_DIR is on shared storage) ..."

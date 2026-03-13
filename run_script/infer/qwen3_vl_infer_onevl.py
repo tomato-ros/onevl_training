@@ -18,6 +18,7 @@ import os
 import json
 import argparse
 import glob
+import time
 
 import torch
 import torch.nn as nn
@@ -313,7 +314,7 @@ def main():
 
     # ---- Build latent prefix ----
     latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|>"
-    assistant_prefix = latent_block + "<answer>"
+    assistant_prefix = latent_block
     print(f"[INFO] assistant_prefix = {repr(assistant_prefix)}")
 
     # ---- Load aux decoder + projection from checkpoint ----
@@ -427,6 +428,9 @@ def main():
             del fwd_out, hidden_states
             torch.cuda.empty_cache()
 
+        torch.cuda.synchronize()
+        start_time = time.time()
+
         # Generate answer
         gen_outputs = model.generate(
             **inputs,
@@ -435,6 +439,9 @@ def main():
             return_dict_in_generate=True,
             output_scores=True,
         )
+        torch.cuda.synchronize()
+        latency = time.time() - start_time
+        print(f"[INFO] Generation latency: {latency} seconds")
 
         generated_ids = gen_outputs.sequences
         generated_ids_trimmed = [
@@ -445,7 +452,8 @@ def main():
             generated_ids_trimmed, skip_special_tokens=False, clean_up_tokenization_spaces=False
         )
 
-        output_dict["messages"] = text
+        output_dict["latency"] = latency
+        output_dict["messages"] = messages
         output_dict["GT"] = item.get("GT", "")
         output_dict["output_text"] = output_text[0]
 
@@ -472,12 +480,12 @@ def main():
 
         if idx < 3 or idx % 100 == 0:
             print(f"\n=== Sample {idx} ===")
-            print(f"  Output: {output_text[0][:200]}")
+            print(f"  Output: {output_text[0][:]}")
             print(f"  Entropy: {avg_entropy.item():.4f}, Confidence: {seq_confidence.item():.2%}")
             if output_dict.get("decoder_explain"):
-                print(f"  Explain: {output_dict['decoder_explain'][:200]}")
+                print(f"  Explain: {output_dict['decoder_explain'][:]}")
             if output_dict.get("visual_decoder_explain"):
-                print(f"  VisExplain: {output_dict['visual_decoder_explain'][:200]}")
+                print(f"  VisExplain: {output_dict['visual_decoder_explain'][:]}")
 
         output_list.append(output_dict)
 
