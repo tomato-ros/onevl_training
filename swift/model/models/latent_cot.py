@@ -47,6 +47,7 @@ class LatentCoTConfig:
     use_separate_visual_latent_tokens: bool = False
     freeze_visual_aux_decoder: bool = False
     freeze_aux_decoder: bool = False
+    freeze_main_model: bool = False
     tokens_as_special: bool = True
     use_original_vocab: bool = False
 
@@ -458,9 +459,6 @@ def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
         model.add_module('_latent_cot_aux_decoder', aux_decoder)
         model.add_module('_latent_cot_latent_proj', latent_proj)
 
-        if config.freeze_aux_decoder:
-            for param in aux_decoder.parameters():
-                param.requires_grad = False
     else:
         model._latent_cot_aux_decoder = None
         model._latent_cot_latent_proj = None
@@ -478,10 +476,6 @@ def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
         model.add_module('_latent_cot_visual_aux_decoder', vis_aux_decoder)
         model.add_module('_latent_cot_visual_latent_proj', visual_latent_proj)
 
-        if config.freeze_visual_aux_decoder:
-            for param in vis_aux_decoder.parameters():
-                param.requires_grad = False
-
         from transformers import AutoTokenizer
         model._latent_cot_visual_aux_tokenizer = AutoTokenizer.from_pretrained(
             config.visual_aux_model_path, trust_remote_code=True)
@@ -495,6 +489,91 @@ def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
 
     logger.info('Model patched for latent CoT training.')
     return model
+
+
+def apply_latent_cot_freeze(model) -> None:
+    """Apply latent CoT freeze settings. Must be called AFTER ms-swift's
+    prepare_model (which resets requires_grad via model.requires_grad_(True))
+    so that our freeze settings are not overridden."""
+    config = getattr(model, '_latent_cot_config', None)
+    if config is None:
+        return
+
+    if config.freeze_main_model:
+        for name, param in model.named_parameters():
+            if not name.startswith('_latent_cot_'):
+                param.requires_grad = False
+
+    if config.freeze_aux_decoder:
+        aux = getattr(model, '_latent_cot_aux_decoder', None)
+        if aux is not None:
+            for param in aux.parameters():
+                param.requires_grad = False
+
+    if config.freeze_visual_aux_decoder:
+        vis_aux = getattr(model, '_latent_cot_visual_aux_decoder', None)
+        if vis_aux is not None:
+            for param in vis_aux.parameters():
+                param.requires_grad = False
+
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    flags = (f'freeze_main={config.freeze_main_model}, '
+             f'freeze_aux={config.freeze_aux_decoder}, '
+             f'freeze_vis_aux={config.freeze_visual_aux_decoder}')
+    logger.info(
+        f'Latent CoT freeze applied ({flags}). '
+        f'Trainable: {trainable_params:,} / {total_params:,} '
+        f'({100 * trainable_params / total_params:.1f}%)')
+
+
+def load_latent_cot_weights(model, model_dir: str) -> None:
+    """Load _latent_cot_* weights from a checkpoint directory.
+
+    When loading a latent-CoT checkpoint via from_pretrained, the base model
+    architecture (Qwen3VLForConditionalGeneration) does not contain
+    _latent_cot_* modules, so those weights are silently dropped. This function
+    restores them after patch_model_for_latent_cot has created the modules.
+    """
+    import json
+    import os
+
+    latent_state = {}
+
+    index_path = os.path.join(model_dir, 'model.safetensors.index.json')
+    single_path = os.path.join(model_dir, 'model.safetensors')
+
+    if os.path.exists(index_path):
+        from safetensors.torch import load_file
+        with open(index_path) as f:
+            weight_map = json.load(f).get('weight_map', {})
+        shards: dict[str, list[str]] = {}
+        for key, shard_file in weight_map.items():
+            if key.startswith('_latent_cot_'):
+                shards.setdefault(shard_file, []).append(key)
+        for shard_file, keys in shards.items():
+            shard_path = os.path.join(model_dir, shard_file)
+            shard_weights = load_file(shard_path, device='cpu')
+            for k in keys:
+                if k in shard_weights:
+                    latent_state[k] = shard_weights[k]
+    elif os.path.exists(single_path):
+        from safetensors.torch import load_file
+        all_weights = load_file(single_path, device='cpu')
+        latent_state = {k: v for k, v in all_weights.items()
+                        if k.startswith('_latent_cot_')}
+
+    if not latent_state:
+        logger.info(f'No _latent_cot_* weights found in {model_dir}, using freshly initialised modules.')
+        return
+
+    missing, unexpected = model.load_state_dict(latent_state, strict=False)
+    loaded_count = len(latent_state) - len(unexpected)
+    logger.info(
+        f'Restored {loaded_count} latent CoT weight tensors from checkpoint. '
+        f'(missing in ckpt: {len(missing)}, unexpected: {len(unexpected)})')
+    if unexpected:
+        logger.warning(f'Unexpected keys when loading latent CoT weights: {unexpected}')
 
 
 def _latent_cot_forward(

@@ -287,6 +287,8 @@ def main():
                              "Weights are loaded from the main checkpoint.")
     parser.add_argument("--c_thought_visual", type=int, default=6)
     parser.add_argument("--max_visual_tokens", type=int, default=512)
+    parser.add_argument("--add_assistant_prefix", action="store_true",
+                        help="Add assistant prefix to the input text")
 
     args = parser.parse_args()
     device = args.device
@@ -314,7 +316,10 @@ def main():
 
     # ---- Build latent prefix ----
     latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|>"
-    assistant_prefix = latent_block
+    if args.add_assistant_prefix:
+        assistant_prefix = latent_block
+    else:
+        assistant_prefix = ""
     print(f"[INFO] assistant_prefix = {repr(assistant_prefix)}")
 
     # ---- Load aux decoder + projection from checkpoint ----

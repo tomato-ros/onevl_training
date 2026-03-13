@@ -17,7 +17,7 @@ def _response_to_traj(resp: str):
         return None
 
     # 粗暴去掉简单标签标记（不做复杂解析）
-    for tag in ["<answer>", "</answer>", "<|im_end|>"]:
+    for tag in ["<answer>", "</answer>", "<|im_end|>","<|start-latent|>","<|latent|>","<|end-latent|>"]:
         s = s.replace(tag, "")
 
     try:

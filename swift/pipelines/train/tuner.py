@@ -359,6 +359,10 @@ class TunerMixin:
             freeze_parameters(model, args.freeze_parameters_ratio, args.freeze_parameters, args.freeze_parameters_regex)
             if args.trainable_parameters or args.trainable_parameters_regex:
                 activate_parameters(model, args.trainable_parameters, args.trainable_parameters_regex)
+
+            if getattr(model, '_latent_cot_config', None) is not None:
+                from swift.model.models.latent_cot import apply_latent_cot_freeze
+                apply_latent_cot_freeze(model)
         else:
             raise ValueError(f'args.tuner_type: {args.tuner_type}')
 

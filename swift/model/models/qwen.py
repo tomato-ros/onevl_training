@@ -1101,7 +1101,7 @@ class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
     def get_model(self, model_dir: str, config, processor, model_kwargs) -> PreTrainedModel:
         model = super().get_model(model_dir, config, processor, model_kwargs)
 
-        from swift.model.models.latent_cot import LatentCoTConfig, patch_model_for_latent_cot
+        from swift.model.models.latent_cot import LatentCoTConfig, patch_model_for_latent_cot, load_latent_cot_weights
         aux_path = get_env_args('LATENT_COT_AUX_MODEL_PATH', str, None)
         vis_aux_path = get_env_args('LATENT_COT_VISUAL_AUX_MODEL_PATH', str, None)
         latent_config = LatentCoTConfig(
@@ -1116,10 +1116,12 @@ class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
                 'LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS', bool, False),
             freeze_visual_aux_decoder=get_env_args('LATENT_COT_FREEZE_VISUAL_AUX_DECODER', bool, False),
             freeze_aux_decoder=get_env_args('LATENT_COT_FREEZE_AUX_DECODER', bool, False),
+            freeze_main_model=get_env_args('LATENT_COT_FREEZE_MAIN_MODEL', bool, False),
             tokens_as_special=get_env_args('LATENT_COT_TOKENS_AS_SPECIAL', bool, True),
             use_original_vocab=get_env_args('LATENT_COT_USE_ORIGINAL_VOCAB', bool, False),
         )
         patch_model_for_latent_cot(model, processor, latent_config)
+        load_latent_cot_weights(model, model_dir)
         return model
 
 
