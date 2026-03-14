@@ -14,10 +14,10 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-500
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_novision/v4-20260313-170856/checkpoint-4500
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
-OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-500/infer_results/qwen3_vl_infer_onevl_merged.json
-OUTPUT_PATH_EVAL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed_e4/v1-20260313-062304/checkpoint-500/infer_results/qwen3_vl_infer_onevl_merged_eval.json
+OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_novision/v4-20260313-170856/checkpoint-4500/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
+OUTPUT_PATH_EVAL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_novision/v4-20260313-170856/checkpoint-4500/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
 
 # ---- OneVL / Latent CoT hyperparameters ----
 NUM_LATENT=6
@@ -30,6 +30,7 @@ AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/lujinghui/mo
 AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-true}
 C_THOUGHT=${C_THOUGHT:-6}
 MAX_EXPLAIN_TOKENS=${MAX_EXPLAIN_TOKENS:-512}
+ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
 
 # Visual decoder explain: set to "true" to enable visual aux decoder
 # Requires VISUAL_AUX_MODEL_PATH to be set.
@@ -145,6 +146,7 @@ for SHARD_ID in $(seq ${MY_SHARD_START} $((MY_SHARD_END - 1))); do
         --device "cuda:${LOCAL_GPU}" \
         --num_latent ${NUM_LATENT} \
         --max_new_tokens ${MAX_NEW_TOKENS} \
+        ${ADD_ASSISTANT_PREFIX} \
         ${EXTRA_FLAGS} &
 
     PIDS+=($!)

@@ -51,6 +51,7 @@ export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
 export LATENT_COT_FREEZE_AUX_DECODER=false
 export LATENT_COT_FREEZE_MAIN_MODEL=true
 export LATENT_COT_LATENT_CE_LOSS=false
+export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=false
 export LATENT_COT_USE_ORIGINAL_VOCAB=true
 
 # ---------- Launch training ----------

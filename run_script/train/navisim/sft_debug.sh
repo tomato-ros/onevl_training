@@ -50,6 +50,7 @@ export LATENT_COT_FREEZE_MAIN_MODEL=false
 # Keep original vocab unchanged: latent markers are sub-tokenized, positions
 # found via |latent| pattern matching. No add_tokens / resize_embeddings.
 export LATENT_COT_LATENT_CE_LOSS=false
+export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=false
 export LATENT_COT_USE_ORIGINAL_VOCAB=true
 
 # ---------- Launch training ----------

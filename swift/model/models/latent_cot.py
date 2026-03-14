@@ -49,6 +49,7 @@ class LatentCoTConfig:
     freeze_aux_decoder: bool = False
     freeze_main_model: bool = False
     latent_ce_loss: bool = False
+    latent_use_all_subtokens: bool = False
     tokens_as_special: bool = True
     use_original_vocab: bool = False
 
@@ -134,7 +135,16 @@ def compute_explain_loss(
     batch_size, aux_decoder, latent_proj, c_thought,
     student_embeds=None, use_visual_condition=False,
     image_token_id=None, video_token_id=None,
+    n_markers_list=None,
 ):
+    """Compute auxiliary decoder loss.
+
+    Args:
+        n_markers_list: optional list (one per batch sample) of actual marker
+            counts.  When provided, grouping uses ``n_markers // c_thought``
+            and positions are divided evenly across groups.  When *None*,
+            falls back to the original ``len(positions) // c_thought``.
+    """
     if aux_decoder is None or explainable_ids_list is None:
         return torch.tensor(0.0, device=last_hidden_states.device)
 
@@ -155,12 +165,19 @@ def compute_explain_loss(
             if vis_embeds is not None:
                 n_vis = vis_embeds.shape[0]
 
-        n_latent_groups = len(latent_lists[b]) // c_thought
+        n_positions = len(latent_lists[b])
+        if n_markers_list is not None:
+            n_markers = n_markers_list[b]
+            n_latent_groups = n_markers // c_thought if c_thought > 0 else 0
+            positions_per_group = n_positions // n_latent_groups if n_latent_groups > 0 else n_positions
+        else:
+            n_latent_groups = n_positions // c_thought
+            positions_per_group = c_thought
         step_ids = explainable_ids_list[b]
 
         for step_idx in range(min(n_latent_groups, len(step_ids))):
-            start_pos = step_idx * c_thought
-            end_pos = min(start_pos + c_thought, len(latent_lists[b]))
+            start_pos = step_idx * positions_per_group
+            end_pos = min(start_pos + positions_per_group, n_positions)
             latent_positions = latent_lists[b][start_pos:end_pos]
             latent_embeds = last_hidden_states[b, latent_positions, :]
 
@@ -392,6 +409,41 @@ def find_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id):
     return positions
 
 
+def find_latent_all_positions_from_pattern(
+    ids_list, latent_keyword_id, pipe_id, marker_component_ids,
+):
+    """Find ALL sub-token positions for each ``<|latent|>`` marker region.
+
+    Unlike ``find_latent_positions_from_pattern`` (which returns one keyword
+    position per marker), this returns every sub-token position that belongs
+    to each ``<|latent|>`` marker.
+
+    Returns:
+        (flat_positions, n_markers):  *flat_positions* is a flat list of all
+        sub-token indices (ordered), *n_markers* is the number of ``<|latent|>``
+        markers found (so the caller can still group by ``c_thought``).
+    """
+    keyword_positions = find_latent_positions_from_pattern(
+        ids_list, latent_keyword_id, pipe_id)
+    if not keyword_positions:
+        return [], 0
+
+    all_positions = []
+    used: set = set()
+    for kw_pos in keyword_positions:
+        start = kw_pos
+        while start > 0 and ids_list[start - 1] in marker_component_ids and (start - 1) not in used:
+            start -= 1
+        end = kw_pos
+        while end < len(ids_list) - 1 and ids_list[end + 1] in marker_component_ids and (end + 1) not in used:
+            end += 1
+        for p in range(start, end + 1):
+            if p not in used:
+                all_positions.append(p)
+                used.add(p)
+    return all_positions, len(keyword_positions)
+
+
 def find_visual_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id, vis_suffix_id):
     """Find positions of ``<|latent-vis|>`` via the ``| latent -vis`` pattern."""
     if vis_suffix_id is None:
@@ -573,13 +625,27 @@ def load_latent_cot_weights(model, model_dir: str) -> None:
         logger.info(f'No _latent_cot_* weights found in {model_dir}, using freshly initialised modules.')
         return
 
-    missing, unexpected = model.load_state_dict(latent_state, strict=False)
-    loaded_count = len(latent_state) - len(unexpected)
-    logger.info(
-        f'Restored {loaded_count} latent CoT weight tensors from checkpoint. '
-        f'(missing in ckpt: {len(missing)}, unexpected: {len(unexpected)})')
-    if unexpected:
-        logger.warning(f'Unexpected keys when loading latent CoT weights: {unexpected}')
+    from transformers.integrations import is_deepspeed_zero3_enabled
+    if is_deepspeed_zero3_enabled():
+        import deepspeed
+        loaded_count = 0
+        for name, param in model.named_parameters():
+            if name in latent_state:
+                with deepspeed.zero.GatheredParameters([param], modifier_rank=0):
+                    if torch.distributed.get_rank() == 0:
+                        param.data.copy_(latent_state[name].to(param.device).to(param.dtype))
+                loaded_count += 1
+        logger.info(
+            f'Restored {loaded_count}/{len(latent_state)} latent CoT weight tensors '
+            f'from checkpoint (DeepSpeed zero3 mode).')
+    else:
+        missing, unexpected = model.load_state_dict(latent_state, strict=False)
+        loaded_count = len(latent_state) - len(unexpected)
+        logger.info(
+            f'Restored {loaded_count} latent CoT weight tensors from checkpoint. '
+            f'(missing in ckpt: {len(missing)}, unexpected: {len(unexpected)})')
+        if unexpected:
+            logger.warning(f'Unexpected keys when loading latent CoT weights: {unexpected}')
 
 
 def _latent_cot_forward(
@@ -657,17 +723,31 @@ def _latent_cot_forward(
         batch_size = input_ids.size(0)
         last_hidden = outputs.hidden_states[-1]
 
+        n_markers_list = None
         if use_orig:
+            use_all_sub = config.latent_use_all_subtokens
             latent_lists = []
-            for b in range(batch_size):
-                ids_list = input_ids[b].tolist()
-                positions = find_latent_positions_from_pattern(ids_list, lkw, pipe)
-                latent_lists.append(positions)
+            if use_all_sub:
+                marker_comp_ids = self._latent_marker_component_ids
+                n_markers_list = []
+                for b in range(batch_size):
+                    ids_list = input_ids[b].tolist()
+                    positions, n_mk = find_latent_all_positions_from_pattern(
+                        ids_list, lkw, pipe, marker_comp_ids)
+                    latent_lists.append(positions)
+                    n_markers_list.append(n_mk)
+            else:
+                for b in range(batch_size):
+                    ids_list = input_ids[b].tolist()
+                    positions = find_latent_positions_from_pattern(ids_list, lkw, pipe)
+                    latent_lists.append(positions)
             logger.info_once(
                 f'[LatentCoT] original_vocab mode, '
+                f'all_subtokens={use_all_sub}, '
                 f'latent_keyword_id={lkw}, pipe_id={pipe}, '
                 f'batch_size={batch_size}, '
                 f'latent_positions_per_sample={[len(p) for p in latent_lists]}, '
+                f'n_markers_per_sample={n_markers_list}, '
                 f'think_steps={think_steps is not None}, '
                 f'aux_decoder={aux_decoder is not None}')
         else:
@@ -708,6 +788,7 @@ def _latent_cot_forward(
                 use_visual_condition=use_vis_cond,
                 image_token_id=image_token_id,
                 video_token_id=video_token_id,
+                n_markers_list=n_markers_list,
             )
             explain_loss = explain_loss * config.explain_loss_weight
 

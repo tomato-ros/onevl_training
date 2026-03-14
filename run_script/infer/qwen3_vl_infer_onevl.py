@@ -315,7 +315,7 @@ def main():
                    else model.config.hidden_size)
 
     # ---- Build latent prefix ----
-    latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|>"
+    latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>"
     if args.add_assistant_prefix:
         assistant_prefix = latent_block
     else:

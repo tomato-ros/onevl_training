@@ -25,8 +25,8 @@ def _response_to_traj(resp: str):
         arr = json.loads("[" + s + "]")
         # 转成 list[list[float]]
         return [[float(v) for v in point] for point in arr]
-    except Exception:
-        return None
+    except Exception as e:
+        return e
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
