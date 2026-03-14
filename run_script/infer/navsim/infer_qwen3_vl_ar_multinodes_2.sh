@@ -14,10 +14,10 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-052108/checkpoint-3228
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-054142/checkpoint-3228
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
-OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-052108/checkpoint-3228/infer_results/qwen3_vl_infer_onevl_merged.json
-OUTPUT_PATH_EVAL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-052108/checkpoint-3228/qwen3_vl_infer_onevl_merged_eval.json
+OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-054142/checkpoint-3228/infer_results/qwen3_vl_infer_onevl_merged.json
+OUTPUT_PATH_EVAL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_latent_4/v0-20260314-054142/checkpoint-3228/qwen3_vl_infer_onevl_merged_eval.json
 
 MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-1024}
 ADD_ASSISTANT_PREFIX=""
