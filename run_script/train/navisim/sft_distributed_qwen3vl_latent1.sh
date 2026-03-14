@@ -70,6 +70,5 @@ swift sft \
     --freeze_vit False \
     --dataloader_num_workers 8 \
     --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_latent_1" \
-    --gradient_checkpointing true \
     --deepspeed zero3 \
   2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_latent_1.log"

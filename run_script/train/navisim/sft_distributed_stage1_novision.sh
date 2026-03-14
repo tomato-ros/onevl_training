@@ -34,7 +34,7 @@ MODEL_PATH="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/outputs/basel
 AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH=""
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full.jsonl"
+DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full_latent_6.jsonl"
 VAL_DATASET_PATH="${SCRIPT_DIR}/data/navsim_val_latent_cot.jsonl"
 
 # ---------- Latent CoT configuration ----------
@@ -51,7 +51,7 @@ export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
 export LATENT_COT_FREEZE_AUX_DECODER=false
 export LATENT_COT_FREEZE_MAIN_MODEL=true
 export LATENT_COT_LATENT_CE_LOSS=true
-export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=false
+export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=true
 export LATENT_COT_USE_ORIGINAL_VOCAB=true
 
 # ---------- Launch training ----------
@@ -77,20 +77,17 @@ swift sft \
     --learning_rate 1e-4 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 2 \
-    --save_steps 200 \
-    --eval_steps 200 \
-    --save_total_limit 4 \
-    --eval_metric acc \
-    --metric_for_best_model token_acc \
-    --load_best_model_at_end true \
+    --gradient_accumulation_steps 1 \
+    --save_steps 500 \
+    --eval_steps 500 \
+    --save_total_limit 3 \
     --logging_steps 5 \
     --max_length 4096 \
     --warmup_steps 100 \
     --weight_decay 0.05 \
     --freeze_vit false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_novision" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_novision_subtokens" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_novision_1.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_novision_subtokens.log"

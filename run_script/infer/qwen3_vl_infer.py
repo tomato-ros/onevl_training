@@ -5,6 +5,7 @@ import json
 from tqdm import tqdm
 import argparse
 from PIL import Image
+import time
 
 def main():
     parser = argparse.ArgumentParser()
@@ -12,6 +13,8 @@ def main():
     parser.add_argument("--test_set_path", type=str,default="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json")
     parser.add_argument("--output_path", type=str,default="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/analysis/qwen3_vl_infer_all.json")
     parser.add_argument("--device", type=str, default="cuda:0")
+    parser.add_argument("--max_new_tokens", type=int, default=1024)
+    parser.add_argument("--add_assistant_prefix", action="store_true")
     args = parser.parse_args()
 
     model_path = args.model_path
@@ -31,10 +34,6 @@ def main():
     processor.image_processor.max_pixels = MAX_IMAGE_SIZE * MAX_IMAGE_SIZE
     processor.image_processor.size["longest_edge"] = MAX_IMAGE_SIZE * MAX_IMAGE_SIZE
     print(f"[INFO] image_processor.size = {processor.image_processor.size}")
-
-    num_latent = 6
-    latent_block = "<|start-latent|>" + "<|latent|>" * num_latent + "<|end-latent|>" 
-    assistant_prefix = latent_block + "<answer>"
 
 
     with open(test_set_path, 'r') as f:
@@ -58,9 +57,7 @@ def main():
                     },
                     {"type": "text", "text": prompt},
                 ],
-            },]
-
-        
+            },]  
 
 
         # Preparation for inference
@@ -69,28 +66,39 @@ def main():
             tokenize=False,
             add_generation_prompt=True,
         )
-        text += assistant_prefix
-
-        print(messages)
-        output_dict["messages"] = text
+        assistant_prefix = "<|start-latent|><|latent|><|end-latent|><answer>["
+        if args.add_assistant_prefix:
+            text += assistant_prefix
+        print(text)
+        output_dict["messages"] = messages
 
         inputs = processor(
             text=[text],
             images=[Image.open(test_image_path).convert("RGB")],
             return_tensors="pt",
-            padding=True,
+            padding=False,
         ).to(device)
+
+        ## print full input ids and tokenizer.decode
+        print(inputs.input_ids[0])
+        # print(processor.tokenizer.decode(inputs.input_ids[0]))
 
         # Inference: Generation of the output
         # 【修改 1】：增加 return_dict_in_generate 和 output_scores
+        torch.cuda.synchronize()
+        start_time = time.time()
+        print(f"[INFO] Generating output...")
         outputs = model.generate(
             **inputs, 
-            max_new_tokens=1024,
+            max_new_tokens=args.max_new_tokens,
             do_sample=False,
             return_dict_in_generate=True,  # 返回包含序列和分数的字典
             output_scores=True             # 输出每一步生成的 logits
         )
-
+        torch.cuda.synchronize()
+        latency = time.time() - start_time
+        print(f"[INFO] Generation latency: {latency} seconds")
+        output_dict["latency"] = latency
         # 提取生成的 IDs
         generated_ids = outputs.sequences
 

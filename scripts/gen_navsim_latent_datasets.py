@@ -88,7 +88,8 @@ def main():
 
     stem = input_path.stem  # e.g. navsim_latent_cot_full
     min_n = max(1, args.min_latent)
-    max_n = min(10, args.max_latent)
+    max_n = args.max_latent
+    # max_n = min(10, args.max_latent)
 
     # 流式处理：对每种 latent 数量扫一遍输入，不把全量读入内存
     for num_latents in range(min_n, max_n + 1):

@@ -42,7 +42,7 @@ export LATENT_COT_C_THOUGHT=6
 export LATENT_COT_C_THOUGHT_VISUAL=0
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
-export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.1
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.5
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_AUX_VISUAL_CONDITION=false
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=false
@@ -92,7 +92,7 @@ swift sft \
     --freeze_llm False \
     --freeze_vit False \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_novision_subtokens" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_novision_subtokens_weight05" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_novision_subtokens.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_novision_subtokens_weight05.log"
