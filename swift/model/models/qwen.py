@@ -1112,6 +1112,7 @@ class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
             explain_loss_weight=get_env_args('LATENT_COT_EXPLAIN_LOSS_WEIGHT', float, 1.0),
             visual_explain_loss_weight=get_env_args('LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT', float, 1.0),
             aux_visual_condition=get_env_args('LATENT_COT_AUX_VISUAL_CONDITION', bool, False),
+            visual_aux_visual_condition=get_env_args('LATENT_COT_VISUAL_AUX_VISUAL_CONDITION', bool, False),
             use_separate_visual_latent_tokens=get_env_args(
                 'LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS', bool, False),
             freeze_visual_aux_decoder=get_env_args('LATENT_COT_FREEZE_VISUAL_AUX_DECODER', bool, False),

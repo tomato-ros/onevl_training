@@ -44,6 +44,7 @@ class LatentCoTConfig:
     explain_loss_weight: float = 1.0
     visual_explain_loss_weight: float = 1.0
     aux_visual_condition: bool = False
+    visual_aux_visual_condition: bool = False
     use_separate_visual_latent_tokens: bool = False
     freeze_visual_aux_decoder: bool = False
     freeze_aux_decoder: bool = False
@@ -242,7 +243,14 @@ def compute_visual_explain_loss(
     batch_size, visual_aux_decoder, visual_latent_proj, c_thought_visual,
     student_embeds=None, use_visual_condition=False,
     image_token_id=None, video_token_id=None,
+    n_markers_list=None,
 ):
+    """Compute visual auxiliary decoder loss.
+
+    Latent embeddings are directly concatenated (no pooling), consistent
+    with ``compute_explain_loss``.  ``n_markers_list`` is accepted for
+    API consistency but does not affect the computation here.
+    """
     if visual_aux_decoder is None or visual_ids_list is None:
         return torch.tensor(0.0, device=last_hidden_states.device)
 
@@ -260,15 +268,6 @@ def compute_visual_explain_loss(
 
         latent_positions = latent_lists[b]
         latent_embeds = last_hidden_states[b, latent_positions, :]
-
-        n_latent = latent_embeds.shape[0]
-        n_use = (n_latent // c_thought_visual) * c_thought_visual
-        if n_use > 0:
-            latent_embeds = latent_embeds[:n_use]
-            latent_embeds = latent_embeds.view(
-                -1, c_thought_visual, latent_embeds.size(-1)).mean(dim=1)
-        else:
-            continue
 
         if visual_latent_proj is not None:
             latent_embeds = visual_latent_proj(latent_embeds)
@@ -291,6 +290,11 @@ def compute_visual_explain_loss(
         parts.append(latent_embeds)
         parts.append(target_embeds)
         combined_embeds = torch.cat(parts, dim=0).unsqueeze(0)
+        logger.info_once(
+            f'[VisualAuxDecoder input] vis_cond={use_visual_condition}, '
+            f'n_vis={n_vis}, n_latent={len(latent_positions)}, '
+            f'n_target_tokens={len(vis_token_ids)}, '
+            f'combined_shape={combined_embeds.shape}')
 
         n_latent_cond = latent_embeds.shape[0]
         prefix_len = n_vis + n_latent_cond
@@ -456,6 +460,38 @@ def find_visual_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_
                 and ids_list[i + 1] == vis_suffix_id):
             positions.append(i)
     return positions
+
+
+def find_visual_latent_all_positions_from_pattern(
+    ids_list, latent_keyword_id, pipe_id, vis_suffix_id, marker_component_ids,
+):
+    """Find ALL sub-token positions for each ``<|latent-vis|>`` marker region.
+
+    Mirrors ``find_latent_all_positions_from_pattern`` but for visual latent
+    markers identified by the ``| latent -vis`` pattern.
+
+    Returns:
+        (flat_positions, n_markers)
+    """
+    keyword_positions = find_visual_latent_positions_from_pattern(
+        ids_list, latent_keyword_id, pipe_id, vis_suffix_id)
+    if not keyword_positions:
+        return [], 0
+
+    all_positions = []
+    used: set = set()
+    for kw_pos in keyword_positions:
+        start = kw_pos
+        while start > 0 and ids_list[start - 1] in marker_component_ids and (start - 1) not in used:
+            start -= 1
+        end = kw_pos
+        while end < len(ids_list) - 1 and ids_list[end + 1] in marker_component_ids and (end + 1) not in used:
+            end += 1
+        for p in range(start, end + 1):
+            if p not in used:
+                all_positions.append(p)
+                used.add(p)
+    return all_positions, len(keyword_positions)
 
 
 def find_latent_mask_region(ids_list, marker_component_ids, latent_keyword_id):
@@ -724,8 +760,8 @@ def _latent_cot_forward(
         last_hidden = outputs.hidden_states[-1]
 
         n_markers_list = None
+        use_all_sub = use_orig and config.latent_use_all_subtokens
         if use_orig:
-            use_all_sub = config.latent_use_all_subtokens
             latent_lists = []
             if use_all_sub:
                 marker_comp_ids = self._latent_marker_component_ids
@@ -764,12 +800,13 @@ def _latent_cot_forward(
                 f'think_steps={think_steps is not None}, '
                 f'aux_decoder={aux_decoder is not None}')
 
-        use_vis_cond = config.aux_visual_condition
+        txt_vis_cond = config.aux_visual_condition
+        vis_vis_cond = config.visual_aux_visual_condition
         image_token_id = getattr(self.config, 'image_token_id', None)
         video_token_id = getattr(self.config, 'video_token_id', None)
 
         student_embeds = None
-        if use_vis_cond:
+        if txt_vis_cond or vis_vis_cond:
             embed_fn = (self.model.get_input_embeddings()
                         if hasattr(self, 'model')
                         else self.get_input_embeddings())
@@ -785,7 +822,7 @@ def _latent_cot_forward(
                 last_hidden, input_ids, latent_lists, explainable_ids_list,
                 batch_size, aux_decoder, latent_proj, config.c_thought,
                 student_embeds=student_embeds,
-                use_visual_condition=use_vis_cond,
+                use_visual_condition=txt_vis_cond,
                 image_token_id=image_token_id,
                 video_token_id=video_token_id,
                 n_markers_list=n_markers_list,
@@ -799,27 +836,41 @@ def _latent_cot_forward(
                     future_image_tokens, vis_tokenizer)
 
                 vis_latent_lists = latent_lists
+                vis_n_markers_list = n_markers_list
                 if config.use_separate_visual_latent_tokens:
                     vis_latent_lists = []
+                    vis_n_markers_list = None
                     for b in range(batch_size):
                         if use_orig:
                             ids_list = input_ids[b].tolist()
-                            positions = find_visual_latent_positions_from_pattern(
-                                ids_list, lkw, pipe, pat['vis_suffix_id'])
+                            if use_all_sub:
+                                marker_comp_ids = self._latent_marker_component_ids
+                                positions, n_mk = find_visual_latent_all_positions_from_pattern(
+                                    ids_list, lkw, pipe, pat['vis_suffix_id'],
+                                    marker_comp_ids)
+                                vis_latent_lists.append(positions)
+                                if vis_n_markers_list is None:
+                                    vis_n_markers_list = []
+                                vis_n_markers_list.append(n_mk)
+                            else:
+                                positions = find_visual_latent_positions_from_pattern(
+                                    ids_list, lkw, pipe, pat['vis_suffix_id'])
+                                vis_latent_lists.append(positions)
                         else:
                             vis_latent_id = token_ids['latent_visual_token_id']
                             positions = (input_ids[b] == vis_latent_id).nonzero(
                                 as_tuple=True)[0].tolist()
-                        vis_latent_lists.append(positions)
+                            vis_latent_lists.append(positions)
 
                 visual_explain_loss = compute_visual_explain_loss(
                     last_hidden, input_ids, vis_latent_lists, visual_ids_list,
                     batch_size, visual_aux_decoder, visual_latent_proj,
                     config.c_thought_visual,
                     student_embeds=student_embeds,
-                    use_visual_condition=use_vis_cond,
+                    use_visual_condition=vis_vis_cond,
                     image_token_id=image_token_id,
                     video_token_id=video_token_id,
+                    n_markers_list=vis_n_markers_list,
                 )
                 visual_explain_loss = (visual_explain_loss
                                        * config.visual_explain_loss_weight)
