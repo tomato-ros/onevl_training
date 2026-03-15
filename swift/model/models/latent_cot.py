@@ -114,6 +114,23 @@ def build_aux_decoder(model_path, torch_dtype=None, device='cpu'):
         model_path, torch_dtype=torch_dtype, device_map=use_device_map, trust_remote_code=True)
 
 
+def _checkpoint_has_visual_aux(model_dir: str) -> bool:
+    """Return True if the checkpoint at model_dir contains _latent_cot_visual_aux_decoder weights."""
+    import json
+    import os
+    index_path = os.path.join(model_dir, 'model.safetensors.index.json')
+    single_path = os.path.join(model_dir, 'model.safetensors')
+    if os.path.exists(index_path):
+        with open(index_path) as f:
+            weight_map = json.load(f).get('weight_map', {})
+        return any(k.startswith('_latent_cot_visual_aux_decoder.') for k in weight_map)
+    if os.path.exists(single_path):
+        from safetensors.torch import load_file
+        keys = load_file(single_path).keys()
+        return any(k.startswith('_latent_cot_visual_aux_decoder.') for k in keys)
+    return False
+
+
 def _get_aux_input_embeddings(aux_decoder):
     if hasattr(aux_decoder, 'model') and hasattr(aux_decoder.model, 'get_input_embeddings'):
         return aux_decoder.model.get_input_embeddings()
@@ -596,8 +613,14 @@ def find_latent_mask_region(ids_list, marker_component_ids, latent_keyword_id):
     return mask
 
 
-def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
-    """Patch a Qwen3-VL model in-place for latent CoT training."""
+def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig, model_dir: Optional[str] = None):
+    """Patch a Qwen3-VL model in-place for latent CoT training.
+
+    When model_dir is a checkpoint that already contains _latent_cot_visual_aux_decoder
+    weights, the visual aux decoder is built from that checkpoint (same config) and
+    weights are loaded from the checkpoint only — LATENT_COT_VISUAL_AUX_MODEL_PATH
+    is not used for weights in that case.
+    """
     tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
 
     if config.use_original_vocab:
@@ -637,7 +660,12 @@ def patch_model_for_latent_cot(model, processor, config: LatentCoTConfig):
         model._latent_cot_latent_proj = None
 
     if config.visual_aux_model_path:
-        logger.info(f'Building visual_aux_decoder from: {config.visual_aux_model_path}')
+        if model_dir and _checkpoint_has_visual_aux(model_dir):
+            logger.info(
+                f'Building visual_aux_decoder from: {config.visual_aux_model_path} (architecture only). '
+                f'Weights will be restored from checkpoint (model_path={model_dir}).')
+        else:
+            logger.info(f'Building visual_aux_decoder from: {config.visual_aux_model_path}')
         vis_aux_decoder = build_aux_decoder(config.visual_aux_model_path, device='cpu')
         vis_aux_hidden = _resolve_hidden_size(vis_aux_decoder)
         visual_latent_proj = nn.Sequential(
@@ -739,6 +767,16 @@ def load_latent_cot_weights(model, model_dir: str) -> None:
     if not latent_state:
         logger.info(f'No _latent_cot_* weights found in {model_dir}, using freshly initialised modules.')
         return
+
+    vis_aux_keys = [k for k in latent_state if k.startswith('_latent_cot_visual_aux_decoder.') or k.startswith('_latent_cot_visual_latent_proj.')]
+    if vis_aux_keys:
+        logger.info(
+            f'[LatentCoT] visual_aux_decoder weights: RESTORED from checkpoint (model_path={model_dir}); '
+            f'{len(vis_aux_keys)} tensors.')
+    else:
+        logger.info(
+            '[LatentCoT] visual_aux_decoder weights: NOT in checkpoint; '
+            'using initialisation from LATENT_COT_VISUAL_AUX_MODEL_PATH.')
 
     from transformers.integrations import is_deepspeed_zero3_enabled
     if is_deepspeed_zero3_enabled():

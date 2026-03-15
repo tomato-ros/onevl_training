@@ -1123,7 +1123,7 @@ class Qwen3VLLatentCoTLoader(Qwen3VLLoader):
             tokens_as_special=get_env_args('LATENT_COT_TOKENS_AS_SPECIAL', bool, True),
             use_original_vocab=get_env_args('LATENT_COT_USE_ORIGINAL_VOCAB', bool, False),
         )
-        patch_model_for_latent_cot(model, processor, latent_config)
+        patch_model_for_latent_cot(model, processor, latent_config, model_dir=model_dir)
         load_latent_cot_weights(model, model_dir)
         return model
 
