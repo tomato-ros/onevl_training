@@ -364,6 +364,22 @@ def _tokenize_visual_targets(visual_text, visual_tokenizer):
     return result
 
 
+def _debug_decode_latent_span(tokenizer, input_ids_one, positions, max_decode_len=200):
+    """Decode the span of input_ids at positions to text for debug logging."""
+    if not positions or input_ids_one is None:
+        return "(no positions)"
+    ids = input_ids_one.tolist() if hasattr(input_ids_one, 'tolist') else input_ids_one
+    lo, hi = min(positions), max(positions)
+    span_ids = ids[lo:hi + 1]
+    try:
+        text = tokenizer.decode(span_ids, skip_special_tokens=False)
+    except Exception:
+        return "(decode error)"
+    if len(text) > max_decode_len:
+        text = text[:max_decode_len] + "..."
+    return text.replace("\n", " ").strip()
+
+
 def _get_latent_pattern_ids(tokenizer):
     """Pre-compute token IDs for pattern-matching latent markers in original vocab mode.
 
@@ -861,6 +877,25 @@ def _latent_cot_forward(
                             positions = (input_ids[b] == vis_latent_id).nonzero(
                                 as_tuple=True)[0].tolist()
                             vis_latent_lists.append(positions)
+
+                    # Debug: decode latent spans for batch 0 to verify text vs visual
+                    _tok = (processor.tokenizer if processor and hasattr(processor, 'tokenizer')
+                            else getattr(processor, 'tokenizer', None))
+                    if _tok is not None and batch_size > 0:
+                        txt_pos = latent_lists[0]
+                        vis_pos = vis_latent_lists[0]
+                        txt_span = _debug_decode_latent_span(_tok, input_ids[0], txt_pos)
+                        vis_span = _debug_decode_latent_span(_tok, input_ids[0], vis_pos)
+                        n_txt = len(txt_pos)
+                        n_vis = len(vis_pos)
+                        n_txt_mk = n_markers_list[0] if n_markers_list else None
+                        n_vis_mk = vis_n_markers_list[0] if vis_n_markers_list else None
+                        logger.info_once(
+                            f'[LatentCoT separate] text_aux: n_positions={n_txt}, '
+                            f'n_markers={n_txt_mk}, span_decode=[{txt_span!r}]')
+                        logger.info_once(
+                            f'[LatentCoT separate] visual_aux: n_positions={n_vis}, '
+                            f'n_markers={n_vis_mk}, span_decode=[{vis_span!r}]')
 
                 visual_explain_loss = compute_visual_explain_loss(
                     last_hidden, input_ids, vis_latent_lists, visual_ids_list,

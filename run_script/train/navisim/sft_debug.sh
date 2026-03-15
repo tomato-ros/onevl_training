@@ -44,13 +44,13 @@ export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.5
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_AUX_VISUAL_CONDITION=false ## whether text aux decoder input vit embeddings
 export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=false ## whether visual aux decoder input vit embeddings
-export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true ## use separate visual latent tokens
+export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true ## use separate visual latent tokens (text aux=<|latent|>, vis aux=<|latent-vis|>)
 export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false ## freeze visual aux decoder
 export LATENT_COT_FREEZE_AUX_DECODER=false ## freeze text aux decoder
 export LATENT_COT_FREEZE_MAIN_MODEL=true ## freeze main model
 # Keep original vocab unchanged: latent markers are sub-tokenized, positions
 # found via |latent| pattern matching. No add_tokens / resize_embeddings.
-export LATENT_COT_LATENT_CE_LOSS=false ## whether compute latent token ce loss in main model
+export LATENT_COT_LATENT_CE_LOSS=true ## whether compute latent token ce loss in main model
 export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=true ## whether use all subtokens
 export LATENT_COT_USE_ORIGINAL_VOCAB=true ## whether use original vocab
 
