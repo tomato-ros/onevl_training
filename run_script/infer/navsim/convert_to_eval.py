@@ -22,11 +22,20 @@ def _response_to_traj(resp: str):
 
     try:
         # 补上最外层中括号，使其成为合法 JSON 数组
-        arr = json.loads("[" + s + "]")
-        # 转成 list[list[float]]
-        return [[float(v) for v in point] for point in arr]
+        try:
+            arr = json.loads("[" + s + "]")
+            # print(arr)
+            # 转成 list[list[float]]
+            return [[float(v) for v in point] for point in arr]
+        except Exception as e:
+            ## prefilling add a extra '['
+            arr = json.loads("[[" + s + "]")
+            # print(arr)
+            # 转成 list[list[float]]
+            return [[float(v) for v in point] for point in arr]
     except Exception as e:
-        return e
+        print(e)
+        return None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
