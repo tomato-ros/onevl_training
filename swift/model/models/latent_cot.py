@@ -414,6 +414,33 @@ def _get_marker_component_ids(tokenizer):
     return ids
 
 
+def _find_text_latent_block_start(ids_list, pipe_id, vis_suffix_id, tokenizer):
+    """Return the first index of the text latent block ``<|start-latent|>``.
+
+    Pattern: pipe, start, -lat, ent, pipe with previous token != -vis
+    (so we do not match inside ``<|start-latent-vis|>``).  Used to split
+    visual vs text latent spans when use_separate_visual_latent_tokens.
+    """
+    def _first_id(text):
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        return enc[0] if len(enc) == 1 else None
+    start_id = _first_id('start')
+    neglat_id = _first_id('-lat')
+    ent_id = _first_id('ent')
+    if start_id is None or neglat_id is None or ent_id is None:
+        return len(ids_list)
+    n = len(ids_list)
+    for i in range(1, n - 4):
+        if (ids_list[i] == pipe_id
+                and ids_list[i + 1] == start_id
+                and ids_list[i + 2] == neglat_id
+                and ids_list[i + 3] == ent_id
+                and ids_list[i + 4] == pipe_id
+                and ids_list[i - 1] != vis_suffix_id):
+            return i
+    return len(ids_list)
+
+
 def find_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id):
     """Find positions of ``<|latent|>`` (not ``<|latent-vis|>``) via the
     ``| latent |`` sub-token pattern.  Returns the index of the *keyword*
@@ -429,24 +456,58 @@ def find_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_id):
     return positions
 
 
+def _expand_keyword_positions_with_stop(
+    ids_list, keyword_positions, marker_component_ids, stop_before,
+):
+    """Expand from each keyword position through contiguous marker tokens.
+
+    Stops expanding so we never include any index in *stop_before* (e.g. the
+    other latent type's keyword positions when separating text vs visual).
+    """
+    stop_set = set(stop_before)
+    all_positions = []
+    used: set = set()
+    for kw_pos in keyword_positions:
+        start = kw_pos
+        while (start > 0
+               and (start - 1) not in stop_set
+               and ids_list[start - 1] in marker_component_ids
+               and (start - 1) not in used):
+            start -= 1
+        end = kw_pos
+        n = len(ids_list)
+        while (end < n - 1
+               and (end + 1) not in stop_set
+               and ids_list[end + 1] in marker_component_ids
+               and (end + 1) not in used):
+            end += 1
+        for p in range(start, end + 1):
+            if p not in used:
+                all_positions.append(p)
+                used.add(p)
+    return all_positions
+
+
 def find_latent_all_positions_from_pattern(
     ids_list, latent_keyword_id, pipe_id, marker_component_ids,
+    stop_before=None,
 ):
     """Find ALL sub-token positions for each ``<|latent|>`` marker region.
 
     Unlike ``find_latent_positions_from_pattern`` (which returns one keyword
     position per marker), this returns every sub-token position that belongs
-    to each ``<|latent|>`` marker.
-
-    Returns:
-        (flat_positions, n_markers):  *flat_positions* is a flat list of all
-        sub-token indices (ordered), *n_markers* is the number of ``<|latent|>``
-        markers found (so the caller can still group by ``c_thought``).
+    to each ``<|latent|>`` marker.  If *stop_before* is provided (set of
+    indices), expansion does not include those positions (for separating
+    text vs visual latent spans).
     """
     keyword_positions = find_latent_positions_from_pattern(
         ids_list, latent_keyword_id, pipe_id)
     if not keyword_positions:
         return [], 0
+    if stop_before is not None:
+        all_positions = _expand_keyword_positions_with_stop(
+            ids_list, keyword_positions, marker_component_ids, stop_before)
+        return all_positions, len(keyword_positions)
 
     all_positions = []
     used: set = set()
@@ -480,19 +541,21 @@ def find_visual_latent_positions_from_pattern(ids_list, latent_keyword_id, pipe_
 
 def find_visual_latent_all_positions_from_pattern(
     ids_list, latent_keyword_id, pipe_id, vis_suffix_id, marker_component_ids,
+    stop_before=None,
 ):
     """Find ALL sub-token positions for each ``<|latent-vis|>`` marker region.
 
-    Mirrors ``find_latent_all_positions_from_pattern`` but for visual latent
-    markers identified by the ``| latent -vis`` pattern.
-
-    Returns:
-        (flat_positions, n_markers)
+    If *stop_before* is provided, expansion does not include those positions
+    (for separating visual vs text latent spans).
     """
     keyword_positions = find_visual_latent_positions_from_pattern(
         ids_list, latent_keyword_id, pipe_id, vis_suffix_id)
     if not keyword_positions:
         return [], 0
+    if stop_before is not None:
+        all_positions = _expand_keyword_positions_with_stop(
+            ids_list, keyword_positions, marker_component_ids, set(stop_before))
+        return all_positions, len(keyword_positions)
 
     all_positions = []
     used: set = set()
@@ -777,9 +840,51 @@ def _latent_cot_forward(
 
         n_markers_list = None
         use_all_sub = use_orig and config.latent_use_all_subtokens
+        separate_vis = use_orig and config.use_separate_visual_latent_tokens
         if use_orig:
             latent_lists = []
-            if use_all_sub:
+            if separate_vis:
+                marker_comp_ids = self._latent_marker_component_ids
+                pat = self._latent_pattern_ids
+                vis_suffix_id = pat.get('vis_suffix_id')
+                tokenizer = (processor.tokenizer if processor and hasattr(processor, 'tokenizer')
+                            else getattr(processor, 'tokenizer', None))
+                vis_latent_lists_sep = []
+                vis_n_markers_list_sep = []
+                for b in range(batch_size):
+                    ids_list = input_ids[b].tolist()
+                    text_kw = find_latent_positions_from_pattern(ids_list, lkw, pipe)
+                    vis_kw = find_visual_latent_positions_from_pattern(
+                        ids_list, lkw, pipe, vis_suffix_id) if vis_suffix_id is not None else []
+                    stop_vis = set(vis_kw)
+                    stop_txt = set(text_kw)
+                    if use_all_sub:
+                        text_block_start = len(ids_list)
+                        if tokenizer is not None and vis_suffix_id is not None:
+                            text_block_start = _find_text_latent_block_start(
+                                ids_list, pipe, vis_suffix_id, tokenizer)
+                        vis_pos_full = (
+                            _expand_keyword_positions_with_stop(
+                                ids_list, vis_kw, marker_comp_ids, stop_txt)
+                            if vis_suffix_id is not None and vis_kw else [])
+                        vis_pos = [p for p in vis_pos_full if p < text_block_start]
+                        text_pos = _expand_keyword_positions_with_stop(
+                            ids_list, text_kw, marker_comp_ids, vis_pos)
+                        text_pos = [p for p in text_pos if p >= text_block_start]
+                        latent_lists.append(text_pos)
+                        vis_latent_lists_sep.append(vis_pos)
+                        n_markers_list = (n_markers_list or [])
+                        n_markers_list.append(len(text_kw))
+                        vis_n_markers_list_sep.append(len(vis_kw))
+                    else:
+                        latent_lists.append(text_kw)
+                        vis_latent_lists_sep.append(vis_kw)
+                        n_markers_list = (n_markers_list or [])
+                        n_markers_list.append(len(text_kw))
+                        vis_n_markers_list_sep.append(len(vis_kw))
+                self._latent_cot_vis_latent_lists = vis_latent_lists_sep
+                self._latent_cot_vis_n_markers_list = vis_n_markers_list_sep
+            elif use_all_sub:
                 marker_comp_ids = self._latent_marker_component_ids
                 n_markers_list = []
                 for b in range(batch_size):
@@ -795,7 +900,7 @@ def _latent_cot_forward(
                     latent_lists.append(positions)
             logger.info_once(
                 f'[LatentCoT] original_vocab mode, '
-                f'all_subtokens={use_all_sub}, '
+                f'all_subtokens={use_all_sub}, separate_visual={separate_vis}, '
                 f'latent_keyword_id={lkw}, pipe_id={pipe}, '
                 f'batch_size={batch_size}, '
                 f'latent_positions_per_sample={[len(p) for p in latent_lists]}, '
@@ -854,29 +959,34 @@ def _latent_cot_forward(
                 vis_latent_lists = latent_lists
                 vis_n_markers_list = n_markers_list
                 if config.use_separate_visual_latent_tokens:
-                    vis_latent_lists = []
-                    vis_n_markers_list = None
-                    for b in range(batch_size):
-                        if use_orig:
-                            ids_list = input_ids[b].tolist()
-                            if use_all_sub:
-                                marker_comp_ids = self._latent_marker_component_ids
-                                positions, n_mk = find_visual_latent_all_positions_from_pattern(
-                                    ids_list, lkw, pipe, pat['vis_suffix_id'],
-                                    marker_comp_ids)
-                                vis_latent_lists.append(positions)
-                                if vis_n_markers_list is None:
-                                    vis_n_markers_list = []
-                                vis_n_markers_list.append(n_mk)
+                    if use_orig and hasattr(self, '_latent_cot_vis_latent_lists'):
+                        vis_latent_lists = self._latent_cot_vis_latent_lists
+                        vis_n_markers_list = getattr(
+                            self, '_latent_cot_vis_n_markers_list', None)
+                    else:
+                        vis_latent_lists = []
+                        vis_n_markers_list = None
+                        for b in range(batch_size):
+                            if use_orig:
+                                ids_list = input_ids[b].tolist()
+                                if use_all_sub:
+                                    marker_comp_ids = self._latent_marker_component_ids
+                                    positions, n_mk = find_visual_latent_all_positions_from_pattern(
+                                        ids_list, lkw, pipe, pat['vis_suffix_id'],
+                                        marker_comp_ids)
+                                    vis_latent_lists.append(positions)
+                                    if vis_n_markers_list is None:
+                                        vis_n_markers_list = []
+                                    vis_n_markers_list.append(n_mk)
+                                else:
+                                    positions = find_visual_latent_positions_from_pattern(
+                                        ids_list, lkw, pipe, pat['vis_suffix_id'])
+                                    vis_latent_lists.append(positions)
                             else:
-                                positions = find_visual_latent_positions_from_pattern(
-                                    ids_list, lkw, pipe, pat['vis_suffix_id'])
+                                vis_latent_id = token_ids['latent_visual_token_id']
+                                positions = (input_ids[b] == vis_latent_id).nonzero(
+                                    as_tuple=True)[0].tolist()
                                 vis_latent_lists.append(positions)
-                        else:
-                            vis_latent_id = token_ids['latent_visual_token_id']
-                            positions = (input_ids[b] == vis_latent_id).nonzero(
-                                as_tuple=True)[0].tolist()
-                            vis_latent_lists.append(positions)
 
                     # Debug: decode latent spans for batch 0 to verify text vs visual
                     _tok = (processor.tokenizer if processor and hasattr(processor, 'tokenizer')
