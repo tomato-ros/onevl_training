@@ -14,16 +14,53 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/outputs/baseline_answer_qwen_allfinetune/v0-20260311-073119/checkpoint-3228
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/stage2_vis_weigth1/checkpoint-2500
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
-OUTPUT_PATH=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged.json
-OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged_eval.json
+OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
+OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
 
-MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-1024}
-ADD_ASSISTANT_PREFIX=""
+# ---- OneVL / Latent CoT hyperparameters ----
+NUM_LATENT=2
+NUM_LATENT_VIS=4
+MAX_NEW_TOKENS=1024
+
+# Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
+# Requires AUX_MODEL_PATH to be set.
+DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
+AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"}
+AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-true}
+C_THOUGHT=${C_THOUGHT:-6}
+MAX_EXPLAIN_TOKENS=${MAX_EXPLAIN_TOKENS:-512}
+ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
+
+# Visual decoder explain: set to "true" to enable visual aux decoder
+# Requires VISUAL_AUX_MODEL_PATH to be set.
+VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
+VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
+C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-6}
+MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-512}
+
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer.py"
-IS_COT=""
+INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer_onevl.py"
+
+# Build extra flags for decoder explain
+EXTRA_FLAGS=""
+if [ "${DECODER_EXPLAIN}" = "true" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --decoder_explain --aux_model_path ${AUX_MODEL_PATH} --c_thought ${C_THOUGHT} --max_explain_tokens ${MAX_EXPLAIN_TOKENS}"
+    if [ "${AUX_VISUAL_CONDITION}" = "true" ]; then
+        EXTRA_FLAGS="${EXTRA_FLAGS} --aux_visual_condition"
+    fi
+fi
+if [ "${VISUAL_DECODER_EXPLAIN}" = "true" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --visual_decoder_explain --visual_aux_model_path ${VISUAL_AUX_MODEL_PATH} --c_thought_visual ${C_THOUGHT_VISUAL} --max_visual_tokens ${MAX_VISUAL_TOKENS}"
+fi
+
+echo "=== OneVL Inference Configuration ==="
+echo "  MODEL_PATH:            ${MODEL_PATH}"
+echo "  DECODER_EXPLAIN:       ${DECODER_EXPLAIN}"
+echo "  VISUAL_DECODER_EXPLAIN:${VISUAL_DECODER_EXPLAIN}"
+echo "  EXTRA_FLAGS:           ${EXTRA_FLAGS}"
+echo "======================================"
 
 # ---- Multi-node: same as train.sh (MLP_WORKER_NUM, MLP_ROLE_INDEX) ----
 NNODES=${MLP_WORKER_NUM:-1}
@@ -108,8 +145,11 @@ for SHARD_ID in $(seq ${MY_SHARD_START} $((MY_SHARD_END - 1))); do
         --test_set_path "${SHARD_INPUT}" \
         --output_path "${SHARD_OUTPUT}" \
         --device "cuda:${LOCAL_GPU}" \
+        --num_latent ${NUM_LATENT} \
+        --num_latent-vis ${NUM_LATENT_VIS} \
         --max_new_tokens ${MAX_NEW_TOKENS} \
-        ${ADD_ASSISTANT_PREFIX} &
+        ${ADD_ASSISTANT_PREFIX} \
+        ${EXTRA_FLAGS} &
 
     PIDS+=($!)
     LOCAL_GPU=$((LOCAL_GPU + 1))
@@ -160,5 +200,4 @@ echo "=== Done. Output saved to ${OUTPUT_PATH} ==="
 ## Step 5: Convert to eval format
 $PYTHON "${SCRIPT_DIR}/convert_to_eval.py" \
     --input_path "${OUTPUT_PATH}" \
-    --output_path "${OUTPUT_PATH_EVAL}" \
-    ${IS_COT}
+    --output_path "${OUTPUT_PATH_EVAL}"
