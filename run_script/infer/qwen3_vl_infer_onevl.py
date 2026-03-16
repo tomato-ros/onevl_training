@@ -322,6 +322,8 @@ def main():
         latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
     if args.add_assistant_prefix:
         assistant_prefix = latent_block
+    else:
+        assistant_prefix = ""
     print(f"[INFO] assistant_prefix = {repr(assistant_prefix)}")
 
     # ---- Load aux decoder + projection from checkpoint ----

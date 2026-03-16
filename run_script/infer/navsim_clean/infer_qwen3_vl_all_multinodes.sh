@@ -36,7 +36,7 @@ ADD_ASSISTANT_PREFIX=""
 # Requires VISUAL_AUX_MODEL_PATH to be set.
 VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
 VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
-C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-6}
+C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-0}
 MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-512}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
