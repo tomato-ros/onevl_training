@@ -31,7 +31,7 @@ MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
 MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis4_text2.jsonl"
+DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis2_text2.jsonl"
 VAL_DATASET_PATH="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json"
 
 
@@ -69,6 +69,6 @@ swift sft \
     --freeze_llm False \
     --freeze_vit False \
     --dataloader_num_workers 8 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_vis4_txt2" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_vis2_txt2" \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_vis4_txt2.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_vis2_txt2.log"

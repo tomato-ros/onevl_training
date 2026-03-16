@@ -14,7 +14,7 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_vis4_txt2/v0-20260315-031820/checkpoint-3228
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_8b_stage0_answer/v0-20260315-115143/checkpoint-3228
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged_eval.json

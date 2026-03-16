@@ -43,7 +43,7 @@ export LATENT_COT_C_THOUGHT_VISUAL=4
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
 export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
-export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1
+export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_AUX_VISUAL_CONDITION=false
 export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true
@@ -72,7 +72,7 @@ swift sft \
     --dataset "${DATASET_PATH}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
-    --num_train_epochs 1 \
+    --num_train_epochs 2 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --learning_rate 1e-4 \
@@ -86,9 +86,11 @@ swift sft \
     --max_length 4096 \
     --warmup_steps 100 \
     --weight_decay 0.05 \
-    --freeze_vit false \
+    --freeze_vit true \
+    --freeze_llm true \
+    --freeze_aligner true \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_subtokens_weigh1" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_subtokens_vis_weight1" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_subtokens_weigh1.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_subtokens_vis_weight1.log"
