@@ -30,9 +30,11 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-8B-Instruct"
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full_with_think.jsonl"
-VAL_DATASET_PATH="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json"
+MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
+# 训练集：train + val（多个数据集用多个 --dataset 传入，会合并训练）
+DATASET_PATH="${SCRIPT_DIR}/data/ar1/train_think_answer.jsonl"
+DATASET_PATH1="${SCRIPT_DIR}/data/ar1/val_think_answer.jsonl"
+VAL_DATASET_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1/test_think_answer.jsonl"
 
 
 # ---------- Launch training ----------
@@ -49,6 +51,7 @@ swift sft \
     --model_type qwen3_vl \
     --train_type full \
     --dataset "${DATASET_PATH}" \
+    --dataset "${DATASET_PATH1}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
     --num_train_epochs 2 \
@@ -69,6 +72,6 @@ swift sft \
     --freeze_llm False \
     --freeze_vit False \
     --dataloader_num_workers 8 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_8b_stage0_cot" \
+    --output_dir "${SCRIPT_DIR}/outputs/ar1/qwen3vl_stage0_cot" \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_8b_stage0_cot.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/ar1/qwen3vl_stage0_cot.log"

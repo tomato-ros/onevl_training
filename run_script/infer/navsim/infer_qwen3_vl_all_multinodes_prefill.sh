@@ -14,13 +14,14 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_novision_subtokens/v0-20260314-083459/checkpoint-2421
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_subtokens_weigh1/v0-20260315-110932/checkpoint-4842
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
 
 # ---- OneVL / Latent CoT hyperparameters ----
-NUM_LATENT=6
+NUM_LATENT=2
+NUM_LATENT_VIS=4
 MAX_NEW_TOKENS=1024
 
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
@@ -145,6 +146,7 @@ for SHARD_ID in $(seq ${MY_SHARD_START} $((MY_SHARD_END - 1))); do
         --output_path "${SHARD_OUTPUT}" \
         --device "cuda:${LOCAL_GPU}" \
         --num_latent ${NUM_LATENT} \
+        --num_latent-vis ${NUM_LATENT_VIS} \
         --max_new_tokens ${MAX_NEW_TOKENS} \
         ${ADD_ASSISTANT_PREFIX} \
         ${EXTRA_FLAGS} &

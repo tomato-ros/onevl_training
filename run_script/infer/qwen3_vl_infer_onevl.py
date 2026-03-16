@@ -263,9 +263,10 @@ def main():
     parser.add_argument("--test_set_path", type=str, required=True)
     parser.add_argument("--output_path", type=str, required=True)
     parser.add_argument("--device", type=str, default="cuda:0")
-
     parser.add_argument("--num_latent", type=int, default=6,
                         help="Number of latent tokens in the prefix")
+    parser.add_argument("--num_latent-vis", type=int, default=0,
+                        help="Number of vis latent tokens in the prefix")
     parser.add_argument("--max_new_tokens", type=int, default=1024)
 
     parser.add_argument("--decoder_explain", action="store_true",
@@ -315,11 +316,12 @@ def main():
                    else model.config.hidden_size)
 
     # ---- Build latent prefix ----
-    latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
+    if args.num_latent_vis > 0:
+        latent_block = "<|start-latent-vis|>" + "<|latent-vis|>" * args.num_latent_vis + "<|end-latent-vis|><|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
+    else:
+        latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
     if args.add_assistant_prefix:
         assistant_prefix = latent_block
-    else:
-        assistant_prefix = ""
     print(f"[INFO] assistant_prefix = {repr(assistant_prefix)}")
 
     # ---- Load aux decoder + projection from checkpoint ----
