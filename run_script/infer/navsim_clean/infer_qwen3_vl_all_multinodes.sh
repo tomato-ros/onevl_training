@@ -14,13 +14,14 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/stage2_vis_weigth1/checkpoint-2500
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_vis4_txt2_2nodes/v0-20260316-105700/checkpoint-3228
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results/qwen3_vl_infer_onevl_merged_eval.json
 
 # ---- OneVL / Latent CoT hyperparameters ----
-NUM_LATENT=6
+NUM_LATENT=2
+NUM_LATENT_VIS=4
 MAX_NEW_TOKENS=1024
 
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
@@ -36,7 +37,7 @@ ADD_ASSISTANT_PREFIX=""
 # Requires VISUAL_AUX_MODEL_PATH to be set.
 VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
 VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
-C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-0}
+C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-6}
 MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-512}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -145,6 +146,7 @@ for SHARD_ID in $(seq ${MY_SHARD_START} $((MY_SHARD_END - 1))); do
         --output_path "${SHARD_OUTPUT}" \
         --device "cuda:${LOCAL_GPU}" \
         --num_latent ${NUM_LATENT} \
+        --num_latent-vis ${NUM_LATENT_VIS} \
         --max_new_tokens ${MAX_NEW_TOKENS} \
         ${ADD_ASSISTANT_PREFIX} \
         ${EXTRA_FLAGS} &

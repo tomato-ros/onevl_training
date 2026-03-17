@@ -51,7 +51,7 @@ swift sft \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
     --num_train_epochs 2 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --learning_rate 4e-5 \
     --loss_type latent_cot \
@@ -68,6 +68,6 @@ swift sft \
     --freeze_llm False \
     --freeze_vit False \
     --dataloader_num_workers 8 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_vis4_txt2" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_vis4_txt2_2nodes" \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_vis4_txt2.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_vis4_txt2_2nodes.log"
