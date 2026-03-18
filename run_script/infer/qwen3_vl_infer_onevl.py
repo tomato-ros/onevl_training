@@ -29,6 +29,185 @@ from transformers import Qwen3VLForConditionalGeneration, AutoProcessor, AutoCon
 from safetensors.torch import load_file
 
 
+# ---------------------------------------------------------------------------
+# Utility functions for finding latent positions in original-vocab mode
+# (ported from swift/model/models/latent_cot.py to keep inference self-contained)
+# ---------------------------------------------------------------------------
+
+def _get_latent_pattern_ids(tokenizer):
+    """Pre-compute token IDs for pattern-matching latent markers in original vocab mode."""
+    def _single_id(text):
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        return enc[0] if len(enc) == 1 else None
+    return {
+        'latent_keyword_id': _single_id('latent'),
+        'pipe_id': _single_id('|'),
+        'vis_suffix_id': _single_id('-vis'),
+    }
+
+
+def _get_marker_component_ids(tokenizer):
+    """Get the set of token IDs that form latent marker strings."""
+    texts = ['<', '>', '|', '><', 'latent', 'start', 'end', '-lat', 'ent', '-vis']
+    ids = set()
+    for text in texts:
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        if len(enc) == 1:
+            ids.add(enc[0])
+    return ids
+
+
+def _find_latent_keyword_positions(ids_list, latent_keyword_id, pipe_id):
+    """Find keyword positions of ``<|latent|>`` via the ``| latent |`` pattern."""
+    positions = []
+    n = len(ids_list)
+    for i in range(1, n - 1):
+        if (ids_list[i] == latent_keyword_id
+                and ids_list[i - 1] == pipe_id
+                and ids_list[i + 1] == pipe_id):
+            positions.append(i)
+    return positions
+
+
+def _find_visual_latent_keyword_positions(ids_list, latent_keyword_id, pipe_id, vis_suffix_id):
+    """Find keyword positions of ``<|latent-vis|>`` via the ``| latent -vis`` pattern."""
+    if vis_suffix_id is None:
+        return []
+    positions = []
+    n = len(ids_list)
+    for i in range(1, n - 1):
+        if (ids_list[i] == latent_keyword_id
+                and ids_list[i - 1] == pipe_id
+                and ids_list[i + 1] == vis_suffix_id):
+            positions.append(i)
+    return positions
+
+
+def _find_text_latent_block_start(ids_list, pipe_id, vis_suffix_id, tokenizer):
+    """Return the first index of the text latent block ``<|start-latent|>``."""
+    def _first_id(text):
+        enc = tokenizer.encode(text, add_special_tokens=False)
+        return enc[0] if len(enc) == 1 else None
+    start_id = _first_id('start')
+    neglat_id = _first_id('-lat')
+    ent_id = _first_id('ent')
+    if start_id is None or neglat_id is None or ent_id is None:
+        return len(ids_list)
+    n = len(ids_list)
+    for i in range(1, n - 4):
+        if (ids_list[i] == pipe_id
+                and ids_list[i + 1] == start_id
+                and ids_list[i + 2] == neglat_id
+                and ids_list[i + 3] == ent_id
+                and ids_list[i + 4] == pipe_id
+                and ids_list[i - 1] != vis_suffix_id):
+            return i
+    return len(ids_list)
+
+
+def _expand_keyword_positions_with_stop(ids_list, keyword_positions, marker_component_ids, stop_before):
+    """Expand from each keyword position through contiguous marker tokens."""
+    stop_set = set(stop_before)
+    all_positions = []
+    used = set()
+    for kw_pos in keyword_positions:
+        start = kw_pos
+        while (start > 0
+               and (start - 1) not in stop_set
+               and ids_list[start - 1] in marker_component_ids
+               and (start - 1) not in used):
+            start -= 1
+        end = kw_pos
+        n = len(ids_list)
+        while (end < n - 1
+               and (end + 1) not in stop_set
+               and ids_list[end + 1] in marker_component_ids
+               and (end + 1) not in used):
+            end += 1
+        for p in range(start, end + 1):
+            if p not in used:
+                all_positions.append(p)
+                used.add(p)
+    return all_positions
+
+
+def compute_inference_latent_positions(
+    input_ids_single, tokenizer,
+    use_original_vocab=False, use_all_subtokens=False,
+    use_separate_visual_latent_tokens=False,
+    pattern_ids=None, marker_component_ids=None,
+):
+    """Compute text and visual latent positions for a single input sequence.
+
+    Returns (text_positions, visual_positions).
+    """
+    if use_original_vocab:
+        ids_list = (input_ids_single.tolist()
+                    if hasattr(input_ids_single, 'tolist') else input_ids_single)
+        lkw = pattern_ids['latent_keyword_id']
+        pipe = pattern_ids['pipe_id']
+        vis_suffix_id = pattern_ids.get('vis_suffix_id')
+
+        if use_separate_visual_latent_tokens:
+            text_kw = _find_latent_keyword_positions(ids_list, lkw, pipe)
+            vis_kw = (_find_visual_latent_keyword_positions(
+                ids_list, lkw, pipe, vis_suffix_id) if vis_suffix_id else [])
+
+            if use_all_subtokens:
+                text_block_start = _find_text_latent_block_start(
+                    ids_list, pipe, vis_suffix_id, tokenizer)
+                stop_txt = set(text_kw)
+                vis_pos_full = (_expand_keyword_positions_with_stop(
+                    ids_list, vis_kw, marker_component_ids, stop_txt) if vis_kw else [])
+                vis_pos = [p for p in vis_pos_full if p < text_block_start]
+                text_pos = _expand_keyword_positions_with_stop(
+                    ids_list, text_kw, marker_component_ids, vis_pos)
+                text_pos = [p for p in text_pos if p >= text_block_start]
+                return text_pos, vis_pos
+            else:
+                return text_kw, vis_kw
+
+        elif use_all_subtokens:
+            kw_positions = _find_latent_keyword_positions(ids_list, lkw, pipe)
+            if not kw_positions:
+                return [], []
+            all_positions = []
+            used = set()
+            for kw_pos in kw_positions:
+                start = kw_pos
+                while (start > 0
+                       and ids_list[start - 1] in marker_component_ids
+                       and (start - 1) not in used):
+                    start -= 1
+                end = kw_pos
+                while (end < len(ids_list) - 1
+                       and ids_list[end + 1] in marker_component_ids
+                       and (end + 1) not in used):
+                    end += 1
+                for p in range(start, end + 1):
+                    if p not in used:
+                        all_positions.append(p)
+                        used.add(p)
+            return all_positions, all_positions
+        else:
+            positions = _find_latent_keyword_positions(ids_list, lkw, pipe)
+            return positions, positions
+    else:
+        latent_token_id = tokenizer.convert_tokens_to_ids('<|latent|>')
+        positions = (input_ids_single == latent_token_id).nonzero(
+            as_tuple=True)[0].tolist()
+        if use_separate_visual_latent_tokens:
+            vis_token_id = tokenizer.convert_tokens_to_ids('<|latent-vis|>')
+            vis_positions = (input_ids_single == vis_token_id).nonzero(
+                as_tuple=True)[0].tolist()
+            return positions, vis_positions
+        return positions, positions
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint loading utilities
+# ---------------------------------------------------------------------------
+
 def collect_state_dict_from_safetensors(ckpt_dir, prefix):
     """Load weight tensors matching a given prefix from all safetensors in ckpt_dir."""
     result = {}
@@ -57,8 +236,25 @@ def build_aux_decoder_from_checkpoint(ckpt_dir, prefix, aux_base_model_path, dev
     sd = collect_state_dict_from_safetensors(ckpt_dir, prefix)
     if sd:
         missing, unexpected = model.load_state_dict(sd, strict=False)
-        print(f"[INFO] Loaded {len(sd)} weights with prefix '{prefix}' "
-              f"(missing={len(missing)}, unexpected={len(unexpected)})")
+        if missing:
+            resolved = []
+            unresolved = list(missing)
+            # Handle tie_word_embeddings: lm_head.weight shares embed_tokens.weight
+            lm_head_missing = [k for k in missing if 'lm_head.weight' in k]
+            if lm_head_missing:
+                embed_key = 'model.language_model.embed_tokens.weight'
+                if embed_key in sd or (hasattr(model, 'lm_head') and hasattr(model, 'model')):
+                    model.lm_head.weight = model.model.language_model.embed_tokens.weight
+                    resolved.extend(lm_head_missing)
+                    unresolved = [k for k in unresolved if k not in lm_head_missing]
+            print(f"[INFO] Loaded {len(sd)} weights with prefix '{prefix}' "
+                  f"(tied lm_head via weight_sharing, all weights OK)")
+            if unresolved:
+                print(f"[WARN] Unresolved missing keys: {unresolved}")
+        else:
+            print(f"[INFO] Loaded {len(sd)} weights with prefix '{prefix}' (all weights matched)")
+        if unexpected:
+            print(f"[WARN] Unexpected keys: {unexpected}")
     else:
         print(f"[WARN] No weights found with prefix '{prefix}' in {ckpt_dir}")
 
@@ -127,10 +323,18 @@ def extract_visual_embeds(student_embeds, input_ids, image_token_id, video_token
 def decode_latent_with_aux(
     model, aux_decoder, latent_proj, input_ids, hidden_states,
     processor, c_thought, device,
+    text_positions_list=None,
     use_visual_condition=False, image_token_id=None, video_token_id=None,
     max_explain_tokens=512,
+    vit_embeds=None,
 ):
-    """Use the auxiliary decoder to generate explicit reasoning from latent hidden states."""
+    """Use the auxiliary decoder to generate explicit reasoning from latent hidden states.
+
+    Args:
+        text_positions_list: pre-computed list of text latent positions per batch element.
+            When provided, these positions are used directly instead of searching for
+            <|latent|> token IDs (required for original-vocab / all-subtokens mode).
+    """
     tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
     latent_token_id = tokenizer.convert_tokens_to_ids('<|latent|>')
     last_hidden = hidden_states[-1]
@@ -141,7 +345,10 @@ def decode_latent_with_aux(
     aux_embedding = get_aux_input_embeddings(aux_decoder)
 
     for b in range(batch_size):
-        positions = (input_ids[b] == latent_token_id).nonzero(as_tuple=True)[0].tolist()
+        if text_positions_list is not None:
+            positions = text_positions_list[b]
+        else:
+            positions = (input_ids[b] == latent_token_id).nonzero(as_tuple=True)[0].tolist()
         if not positions:
             results.append("")
             continue
@@ -152,15 +359,23 @@ def decode_latent_with_aux(
 
         parts = []
         if use_visual_condition and image_token_id is not None:
-            embed_fn = (model.model.get_input_embeddings()
-                        if hasattr(model, 'model') else model.get_input_embeddings())
-            student_embeds = embed_fn(input_ids[b])
+            if vit_embeds is not None:
+                student_embeds_b = vit_embeds[b]
+            else:
+                embed_fn = (model.model.get_input_embeddings()
+                            if hasattr(model, 'model') else model.get_input_embeddings())
+                student_embeds_b = embed_fn(input_ids[b])
             vis_embeds = extract_visual_embeds(
-                student_embeds, input_ids[b], image_token_id, video_token_id)
+                student_embeds_b, input_ids[b], image_token_id, video_token_id)
             if vis_embeds is not None:
                 parts.append(vis_embeds)
         parts.append(latent_embeds)
         combined = torch.cat(parts, dim=0).unsqueeze(0)
+
+        print(f"  [TextAux] batch={b}, n_positions={len(positions)}, "
+              f"vis_cond={use_visual_condition}, "
+              f"vit_embeds={'hook' if vit_embeds is not None else 'placeholder'}, "
+              f"combined_shape={combined.shape}")
 
         generated_ids = []
         cur_embeds = combined
@@ -184,12 +399,25 @@ def decode_latent_with_aux(
 def decode_latent_with_visual_aux(
     model, visual_aux_decoder, visual_latent_proj, input_ids, hidden_states,
     processor, c_thought_visual, device,
+    visual_positions_list=None,
     use_visual_condition=False, image_token_id=None, video_token_id=None,
     max_visual_tokens=512,
+    vit_embeds=None,
 ):
-    """Use the visual auxiliary decoder to generate future visual tokens from latent states."""
+    """Use the visual auxiliary decoder to generate future visual tokens from latent states.
+
+    Matches the training implementation in compute_visual_explain_loss:
+    - Uses visual latent positions (not text latent positions) when separated
+    - Directly concatenates latent embeddings (NO pooling/mean)
+    - Projects with visual_latent_proj
+    - Optionally prepends ViT embedding condition (visual_aux_visual_condition)
+
+    Args:
+        visual_positions_list: pre-computed list of visual latent positions per batch
+            element. When provided, uses these directly instead of searching for
+            <|latent|> token IDs.
+    """
     tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
-    latent_token_id = tokenizer.convert_tokens_to_ids('<|latent|>')
     last_hidden = hidden_states[-1]
 
     vis_aux_tokenizer = None
@@ -208,34 +436,41 @@ def decode_latent_with_visual_aux(
     aux_embedding = get_aux_input_embeddings(visual_aux_decoder)
 
     for b in range(batch_size):
-        positions = (input_ids[b] == latent_token_id).nonzero(as_tuple=True)[0].tolist()
+        if visual_positions_list is not None:
+            positions = visual_positions_list[b]
+        else:
+            latent_token_id = tokenizer.convert_tokens_to_ids('<|latent|>')
+            positions = (input_ids[b] == latent_token_id).nonzero(as_tuple=True)[0].tolist()
         if not positions:
             results.append("")
             continue
 
         latent_embeds = last_hidden[b, positions, :]
-        n_latent = latent_embeds.shape[0]
-        n_use = (n_latent // c_thought_visual) * c_thought_visual
-        if n_use == 0:
-            results.append("")
-            continue
-        latent_embeds = latent_embeds[:n_use].view(
-            -1, c_thought_visual, latent_embeds.size(-1)).mean(dim=1)
 
         if visual_latent_proj is not None:
             latent_embeds = visual_latent_proj(latent_embeds)
 
         parts = []
+        n_vis = 0
         if use_visual_condition and image_token_id is not None:
-            embed_fn = (model.model.get_input_embeddings()
-                        if hasattr(model, 'model') else model.get_input_embeddings())
-            student_embeds = embed_fn(input_ids[b])
+            if vit_embeds is not None:
+                student_embeds_b = vit_embeds[b]
+            else:
+                embed_fn = (model.model.get_input_embeddings()
+                            if hasattr(model, 'model') else model.get_input_embeddings())
+                student_embeds_b = embed_fn(input_ids[b])
             vis_embeds = extract_visual_embeds(
-                student_embeds, input_ids[b], image_token_id, video_token_id)
+                student_embeds_b, input_ids[b], image_token_id, video_token_id)
             if vis_embeds is not None:
+                n_vis = vis_embeds.shape[0]
                 parts.append(vis_embeds)
         parts.append(latent_embeds)
         combined = torch.cat(parts, dim=0).unsqueeze(0)
+
+        print(f"  [VisualAux] batch={b}, n_positions={len(positions)}, "
+              f"n_vis={n_vis}, vis_cond={use_visual_condition}, "
+              f"vit_embeds={'hook' if vit_embeds is not None else 'placeholder'}, "
+              f"combined_shape={combined.shape}")
 
         generated_ids = []
         cur_embeds = combined
@@ -286,8 +521,19 @@ def main():
     parser.add_argument("--visual_aux_model_path", type=str, default=None,
                         help="Base architecture path for visual aux decoder. "
                              "Weights are loaded from the main checkpoint.")
+    parser.add_argument("--visual_aux_visual_condition", action="store_true",
+                        help="Condition visual aux decoder on ViT embeddings "
+                             "(separate from --aux_visual_condition)")
     parser.add_argument("--c_thought_visual", type=int, default=6)
-    parser.add_argument("--max_visual_tokens", type=int, default=512)
+    parser.add_argument("--max_visual_tokens", type=int, default=1024)
+
+    parser.add_argument("--use_original_vocab", action="store_true",
+                        help="Use original vocab mode (pattern matching for latent positions)")
+    parser.add_argument("--use_all_subtokens", action="store_true",
+                        help="Use all sub-tokens of each latent marker (not just keyword)")
+    parser.add_argument("--use_separate_visual_latent_tokens", action="store_true",
+                        help="Separate visual (<|latent-vis|>) and text (<|latent|>) "
+                             "latent positions for their respective decoders")
     parser.add_argument("--add_assistant_prefix", action="store_true",
                         help="Add assistant prefix to the input text")
 
@@ -309,6 +555,20 @@ def main():
 
     image_token_id = getattr(model.config, 'image_token_id', None)
     video_token_id = getattr(model.config, 'video_token_id', None)
+
+    # ---- Pre-compute pattern IDs for original vocab mode ----
+    tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
+    pattern_ids = None
+    marker_component_ids = None
+    if args.use_original_vocab:
+        pattern_ids = _get_latent_pattern_ids(tokenizer)
+        marker_component_ids = _get_marker_component_ids(tokenizer)
+        print(f"[INFO] Original vocab mode: pattern_ids={pattern_ids}")
+    print(f"[INFO] use_original_vocab={args.use_original_vocab}, "
+          f"use_all_subtokens={args.use_all_subtokens}, "
+          f"use_separate_visual_latent_tokens={args.use_separate_visual_latent_tokens}")
+    print(f"[INFO] aux_visual_condition={args.aux_visual_condition}, "
+          f"visual_aux_visual_condition={args.visual_aux_visual_condition}")
 
     # ---- Resolve hidden sizes ----
     base_hidden = (model.config.text_config.hidden_size
@@ -400,23 +660,88 @@ def main():
             text=[text], images=[img], return_tensors="pt", padding=True
         ).to(device)
 
+        vit_embeds = None
         if need_hidden:
+            _captured = {}
+            def _capture_vit_hook(module, args, kwargs):
+                ie = kwargs.get('inputs_embeds')
+                if ie is not None:
+                    _captured['embeds'] = ie.detach()
+                return None
+            _hook = model.model.language_model.register_forward_pre_hook(
+                _capture_vit_hook, with_kwargs=True)
+
             fwd_out = model(
                 **inputs,
                 output_hidden_states=True,
                 return_dict=True,
             )
+            _hook.remove()
             hidden_states = fwd_out.hidden_states
+            vit_embeds = _captured.get('embeds')
+
+            batch_size_cur = inputs['input_ids'].size(0)
+            text_positions_list = []
+            visual_positions_list = []
+            for b in range(batch_size_cur):
+                txt_pos, vis_pos = compute_inference_latent_positions(
+                    inputs['input_ids'][b], tokenizer,
+                    use_original_vocab=args.use_original_vocab,
+                    use_all_subtokens=args.use_all_subtokens,
+                    use_separate_visual_latent_tokens=args.use_separate_visual_latent_tokens,
+                    pattern_ids=pattern_ids,
+                    marker_component_ids=marker_component_ids,
+                )
+                text_positions_list.append(txt_pos)
+                visual_positions_list.append(vis_pos)
+
+            if idx < 3:
+                print(f"  [Positions] text={[len(p) for p in text_positions_list]}, "
+                      f"visual={[len(p) for p in visual_positions_list]}")
+                for b in range(batch_size_cur):
+                    ids_b = inputs['input_ids'][b]
+                    if text_positions_list[b]:
+                        txt_ids = ids_b[text_positions_list[b]].tolist()
+                        txt_decoded = tokenizer.decode(txt_ids, skip_special_tokens=False)
+                        print(f"  [Debug b={b}] text_latent positions={text_positions_list[b]}")
+                        print(f"  [Debug b={b}] text_latent token_ids={txt_ids}")
+                        print(f"  [Debug b={b}] text_latent decoded='{txt_decoded}'")
+                    if visual_positions_list[b]:
+                        vis_ids = ids_b[visual_positions_list[b]].tolist()
+                        vis_decoded = tokenizer.decode(vis_ids, skip_special_tokens=False)
+                        print(f"  [Debug b={b}] vis_latent  positions={visual_positions_list[b]}")
+                        print(f"  [Debug b={b}] vis_latent  token_ids={vis_ids}")
+                        print(f"  [Debug b={b}] vis_latent  decoded='{vis_decoded}'")
+
+            if idx < 3 and vit_embeds is not None and image_token_id is not None:
+                _vis_mask = (inputs['input_ids'][0] == image_token_id)
+                if _vis_mask.any():
+                    _vit_at_img = vit_embeds[0][_vis_mask]
+                    _embed_fn = model.model.get_input_embeddings()
+                    _placeholder_at_img = _embed_fn(inputs['input_ids'][0])[_vis_mask]
+                    print(f"  [Debug ViT vs Placeholder] n_img_tokens={_vis_mask.sum().item()}")
+                    print(f"    ViT embeds std across positions: "
+                          f"{_vit_at_img.float().std(dim=0).mean().item():.6f}")
+                    print(f"    Placeholder std across positions: "
+                          f"{_placeholder_at_img.float().std(dim=0).mean().item():.6f}")
+                    print(f"    ViT embeds norm (first 3): "
+                          f"{_vit_at_img[:3].float().norm(dim=-1).tolist()}")
+                    print(f"    Placeholder norm (first 3): "
+                          f"{_placeholder_at_img[:3].float().norm(dim=-1).tolist()}")
+                    print(f"    Are ViT embeds diverse (std > 1e-6)? "
+                          f"{_vit_at_img.float().std(dim=0).mean().item() > 1e-6}")
 
             if aux_decoder is not None:
                 explains = decode_latent_with_aux(
                     model, aux_decoder, latent_proj,
                     inputs['input_ids'], hidden_states, processor,
                     args.c_thought, device,
+                    text_positions_list=text_positions_list,
                     use_visual_condition=args.aux_visual_condition,
                     image_token_id=image_token_id,
                     video_token_id=video_token_id,
                     max_explain_tokens=args.max_explain_tokens,
+                    vit_embeds=vit_embeds,
                 )
                 if explains and explains[0]:
                     output_dict["decoder_explain"] = explains[0]
@@ -426,10 +751,12 @@ def main():
                     model, visual_aux_decoder, visual_latent_proj,
                     inputs['input_ids'], hidden_states, processor,
                     args.c_thought_visual, device,
-                    use_visual_condition=args.aux_visual_condition,
+                    visual_positions_list=visual_positions_list,
+                    use_visual_condition=args.visual_aux_visual_condition,
                     image_token_id=image_token_id,
                     video_token_id=video_token_id,
                     max_visual_tokens=args.max_visual_tokens,
+                    vit_embeds=vit_embeds,
                 )
                 if vis_explains and vis_explains[0]:
                     output_dict["visual_decoder_explain"] = vis_explains[0]

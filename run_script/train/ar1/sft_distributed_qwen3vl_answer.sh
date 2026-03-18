@@ -34,7 +34,7 @@ MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-
 # 训练集：train + val（多个数据集用多个 --dataset 传入，会合并训练）
 DATASET_PATH="${SCRIPT_DIR}/data/ar1/train_answer.jsonl"
 DATASET_PATH1="${SCRIPT_DIR}/data/ar1/val_answer.jsonl"
-VAL_DATASET_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1/test_answer.jsonl"
+VAL_DATASET_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1/test_answer_1000.jsonl"
 
 
 # ---------- Launch training ----------
@@ -51,21 +51,21 @@ swift sft \
     --model_type qwen3_vl \
     --train_type full \
     --dataset "${DATASET_PATH}" \
-    --dataset "${DATASET_PATH1}" \
+              "${DATASET_PATH1}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
     --num_train_epochs 2 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --learning_rate 4e-5 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 2 \
     --save_steps 500 \
     --eval_steps 500 \
     --save_total_limit 3 \
     --logging_steps 5 \
-    --max_length 4096 \
+    --max_length 12258 \
     --warmup_steps 100 \
     --weight_decay 0.05 \
     --freeze_aligner False \

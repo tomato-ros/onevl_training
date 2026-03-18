@@ -847,6 +847,19 @@ def _latent_cot_forward(
                    or (future_image_tokens is not None and
                        getattr(self, '_latent_cot_visual_aux_decoder', None) is not None))
 
+    _vit_hook_handle = None
+    self._captured_vit_embeds = None
+    if (config.aux_visual_condition or config.visual_aux_visual_condition) and need_hidden:
+        def _capture_vit_embeds_hook(module, args, kwargs):
+            ie = kwargs.get('inputs_embeds')
+            if ie is not None:
+                self._captured_vit_embeds = ie.detach()
+            return None
+        _lm = getattr(getattr(self, 'model', None), 'language_model', None)
+        if _lm is not None:
+            _vit_hook_handle = _lm.register_forward_pre_hook(
+                _capture_vit_embeds_hook, with_kwargs=True)
+
     outputs = self._origin_forward_for_latent_cot(
         input_ids=input_ids,
         attention_mask=attention_mask,
@@ -859,6 +872,9 @@ def _latent_cot_forward(
         output_hidden_states=need_hidden,
         **kwargs,
     )
+
+    if _vit_hook_handle is not None:
+        _vit_hook_handle.remove()
 
     dev = (outputs.loss.device if outputs.loss is not None
            else (input_ids.device if input_ids is not None else 'cuda'))
@@ -966,10 +982,30 @@ def _latent_cot_forward(
 
         student_embeds = None
         if txt_vis_cond or vis_vis_cond:
-            embed_fn = (self.model.get_input_embeddings()
-                        if hasattr(self, 'model')
-                        else self.get_input_embeddings())
-            student_embeds = embed_fn(input_ids)
+            student_embeds = self._captured_vit_embeds
+            if student_embeds is not None:
+                _img_tid = getattr(self.config, 'image_token_id', None)
+                if _img_tid is not None and input_ids is not None:
+                    _vis_mask = (input_ids[0] == _img_tid)
+                    if _vis_mask.any():
+                        _vit_std = student_embeds[0][_vis_mask].float().std(dim=0).mean().item()
+                        logger.info_once(
+                            f'[LatentCoT] Using ViT-injected embeddings for visual condition '
+                            f'(shape={student_embeds.shape}, '
+                            f'n_img_tokens={_vis_mask.sum().item()}, '
+                            f'vit_embed_std_across_positions={_vit_std:.6f})')
+                    else:
+                        logger.info_once(
+                            f'[LatentCoT] Using ViT-injected embeddings '
+                            f'(shape={student_embeds.shape}, no image tokens)')
+            else:
+                embed_fn = (self.model.get_input_embeddings()
+                            if hasattr(self, 'model')
+                            else self.get_input_embeddings())
+                student_embeds = embed_fn(input_ids)
+                logger.warning_once(
+                    '[LatentCoT] Hook failed to capture ViT embeddings, '
+                    'falling back to placeholder embeddings')
 
         if aux_decoder is not None and think_steps is not None:
             tokenizer = (processor.tokenizer

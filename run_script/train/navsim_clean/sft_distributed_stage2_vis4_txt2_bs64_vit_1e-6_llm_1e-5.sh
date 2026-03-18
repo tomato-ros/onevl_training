@@ -30,7 +30,7 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_vis4_txt2_2nodes/v0-20260316-105700/checkpoint-3228" ## previous stage1 model path
+MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2/v1-20260316-135709/checkpoint-1614" ## previous stage2 model path
 AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/navsim/qwen3_vl_visual_aux_decoder_512/checkpoints/global_step_15634/hf_ckpt" ## pretrain visual aux decoder model path
@@ -42,18 +42,18 @@ export LATENT_COT_C_THOUGHT=2
 export LATENT_COT_C_THOUGHT_VISUAL=4
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
-export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0 ## text aux decoder ce loss
-export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1 ## visual aux decoder ce loss
-export LATENT_COT_AUX_VISUAL_CONDITION=false ## text aux decoder use vit embedding
-export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true ## visual aux decoder use vit embedding
-export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true ## use separate latent tokens for text/visual
-
-export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false ## freeze visual aux decoder
-export LATENT_COT_FREEZE_AUX_DECODER=false ## freeze text aux decoder
-export LATENT_COT_FREEZE_MAIN_MODEL=true ## freeze main model
-export LATENT_COT_LATENT_CE_LOSS=true ## latent token compute ce loss
-export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=true ## use all subtokens for latent ce loss
-export LATENT_COT_USE_ORIGINAL_VOCAB=true ## use original vocab
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
+export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1
+export LATENT_COT_AUX_VISUAL_CONDITION=false
+export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true
+export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true
+# With DeepSpeed zero3 + multi-GPU, memory is sufficient to train aux decoders
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
+export LATENT_COT_FREEZE_AUX_DECODER=false
+export LATENT_COT_FREEZE_MAIN_MODEL=false
+export LATENT_COT_LATENT_CE_LOSS=true
+export LATENT_COT_LATENT_USE_ALL_SUBTOKENS=true
+export LATENT_COT_USE_ORIGINAL_VOCAB=true
 
 # ---------- Launch training ----------
 mkdir -p "${SCRIPT_DIR}/logs"
@@ -72,25 +72,26 @@ swift sft \
     --dataset "${DATASET_PATH}" \
     --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
-    --num_train_epochs 1 \
+    --num_train_epochs 3 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --learning_rate 1e-4 \
+    --learning_rate 1e-5 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
     --gradient_accumulation_steps 1 \
-    --save_steps 500 \
-    --eval_steps 500 \
-    --save_total_limit 3 \
+    --save_strategy epoch \
+    --eval_strategy epoch \
+    --save_total_limit 4 \
+    --vit_lr 1e-6 \
     --logging_steps 5 \
     --max_length 4096 \
     --warmup_steps 100 \
     --weight_decay 0.05 \
-    --freeze_vit true \
-    --freeze_llm true \
-    --freeze_aligner true \
+    --freeze_vit false \
+    --freeze_llm false \
+    --freeze_aligner false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_2nodes" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_vit_1e-6_llm_1e-5" \
     --gradient_checkpointing true \
     --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_2nodes.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_vit_1e-6_llm_1e-5.log"

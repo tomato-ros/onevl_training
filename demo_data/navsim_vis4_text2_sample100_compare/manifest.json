@@ -1,0 +1,808 @@
+{
+  "jsonl": "/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_vis4_text2.jsonl",
+  "n": 100,
+  "seed": 42,
+  "out_dir": "/e2e-data/evad-tech-vla/lujinghui/ms-swift/demo_data/navsim_vis4_text2_sample100_compare",
+  "samples": [
+    {
+      "jsonl_line_index": 427,
+      "sample_rank": 0,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.18.13.35_veh-26_03853_03946/CAM_F0/9a4c1ce15d415c38.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 568,
+      "sample_rank": 1,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.11.54.15_veh-12_02540_02723/CAM_F0/527e7456d5635770.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 1746,
+      "sample_rank": 2,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.17.19.18.39_veh-08_00407_00595/CAM_F0/679ed7b6d9fa54e1.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 2491,
+      "sample_rank": 3,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.18.13.35_veh-26_01728_01918/CAM_F0/484bf93b90c75534.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 4095,
+      "sample_rank": 4,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.11.05.34.05_veh-50_00971_01251/CAM_F0/00a606453c535fe7.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 5138,
+      "sample_rank": 5,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.14.58.55_veh-35_04695_05321/CAM_F0/690026c7bbce563b.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 5245,
+      "sample_rank": 6,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.06.13.21.47_veh-28_01127_01187/CAM_F0/cf1b58b7fb7d56d0.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 6956,
+      "sample_rank": 7,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.18.23.43_veh-35_00026_00274/CAM_F0/17ed824d30c553c4.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 7095,
+      "sample_rank": 8,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.05.12.19.36.12_veh-35_02079_02176/CAM_F0/cf08c62de34752bd.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 8225,
+      "sample_rank": 9,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.14.54.32_veh-16_00636_00840/CAM_F0/0b54fd943a0c5e8f.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 9290,
+      "sample_rank": 10,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.16.51.15_veh-28_00176_00329/CAM_F0/ff4f0cc7a0ca5308.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 11383,
+      "sample_rank": 11,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.16.52.00_veh-26_01043_03099/CAM_F0/4c87c281b8c55031.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 11706,
+      "sample_rank": 12,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.16.08.35_veh-35_00805_01292/CAM_F0/7bb4249b53855f14.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 13639,
+      "sample_rank": 13,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.17.23.18_veh-38_02526_03027/CAM_F0/f185674219c856be.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 15537,
+      "sample_rank": 14,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.01.19.16.42_veh-28_00392_00906/CAM_F0/af9261aad7375ccc.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 16299,
+      "sample_rank": 15,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.15.53.28_veh-38_03528_04262/CAM_F0/3d4689e2d1ed5ff4.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 16897,
+      "sample_rank": 16,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.51.31_veh-35_00852_01020/CAM_F0/be69a970511c536e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 18252,
+      "sample_rank": 17,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.14.03.45_veh-38_05222_05347/CAM_F0/f63c47ec15aa5e27.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 20847,
+      "sample_rank": 18,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.06.19.27.33_veh-28_00805_01736/CAM_F0/9d7ff098686c562a.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 22095,
+      "sample_rank": 19,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.05.12.22.00.38_veh-35_00215_00995/CAM_F0/f88c210cec3f5995.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 22190,
+      "sample_rank": 20,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.23.23.48_veh-26_02228_04624/CAM_F0/64a63b567cd759e0.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 22907,
+      "sample_rank": 21,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.01.13.28.54_veh-28_01098_01337/CAM_F0/b77123fd913d56c1.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 26272,
+      "sample_rank": 22,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.05.12.22.28.35_veh-35_02138_02481/CAM_F0/5a3b341d4f1a506d.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 26845,
+      "sample_rank": 23,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.16.48.02_veh-12_04783_04967/CAM_F0/c76ffd91e719590e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 28096,
+      "sample_rank": 24,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.11.05.34.05_veh-50_00020_00149/CAM_F0/7806261fe5885aac.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 29114,
+      "sample_rank": 25,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.20.59.12_veh-38_04342_05676/CAM_F0/8502625424b45a01.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 29184,
+      "sample_rank": 26,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.20.59.12_veh-38_04342_05676/CAM_F0/6577e4867a9b5fee.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 29743,
+      "sample_rank": 27,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.18.49.56_veh-26_00833_03384/CAM_F0/5b4db7488c035d7a.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 30068,
+      "sample_rank": 28,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.01.15.32.11_veh-28_00475_00930/CAM_F0/c49a8bdbf2de55d5.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 31968,
+      "sample_rank": 29,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.15.53.28_veh-38_04273_04767/CAM_F0/8b8c3c49453257f9.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 32000,
+      "sample_rank": 30,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.15.53.28_veh-38_04273_04767/CAM_F0/aec9bf7908595860.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 32122,
+      "sample_rank": 31,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.00.51.05_veh-17_01352_01901/CAM_F0/d176707c00d355e4.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 33031,
+      "sample_rank": 32,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.18.13.35_veh-26_00259_00374/CAM_F0/c106cf6d49695b75.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 33505,
+      "sample_rank": 33,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.17.17.17.01_veh-45_02314_02798/CAM_F0/d8204ed80af75eb6.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 37146,
+      "sample_rank": 34,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.16.32.09_veh-35_03129_03220/CAM_F0/fd6d679ca8345be7.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 37549,
+      "sample_rank": 35,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.11.05.34.05_veh-50_01281_01692/CAM_F0/310f55c0affa5dda.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 37714,
+      "sample_rank": 36,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.39.51_veh-26_02989_03385/CAM_F0/407893a25bbe5291.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 37836,
+      "sample_rank": 37,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.17.37.09_veh-12_02324_02434/CAM_F0/d6278da7f00e591e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 38311,
+      "sample_rank": 38,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.17.16.48.45_veh-43_02070_02652/CAM_F0/66497d118ad259f3.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 40718,
+      "sample_rank": 39,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.16.54.19_veh-35_00016_00755/CAM_F0/a53724c54f8f598f.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 40724,
+      "sample_rank": 40,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.16.54.19_veh-35_00016_00755/CAM_F0/445d772fb65d5316.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 41049,
+      "sample_rank": 41,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.00.51.05_veh-17_01938_03243/CAM_F0/22de9535539d56c5.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 41524,
+      "sample_rank": 42,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.17.19.18.39_veh-08_00208_00380/CAM_F0/7bb99349e2ad5bdb.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 43223,
+      "sample_rank": 43,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.14.03.17_veh-12_00375_00566/CAM_F0/41d502a269dd58cf.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 43324,
+      "sample_rank": 44,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.18.06.21_veh-38_04933_05307/CAM_F0/a9c5bebea4d3514f.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 44846,
+      "sample_rank": 45,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.02.42.50_veh-35_00038_02629/CAM_F0/d3f0fbfc644159ef.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 47615,
+      "sample_rank": 46,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.17.26.26_veh-38_02740_03036/CAM_F0/8981ca2b749f52e9.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 49009,
+      "sample_rank": 47,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.20.26.11_veh-35_00026_00236/CAM_F0/9dcaeb02e53c5703.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 49419,
+      "sample_rank": 48,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.16.32.09_veh-35_03803_04103/CAM_F0/ff209ba833b55f44.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 50333,
+      "sample_rank": 49,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.17.06.37_veh-35_02609_05015/CAM_F0/207a4dda18fe5555.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 50386,
+      "sample_rank": 50,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.17.06.37_veh-35_02609_05015/CAM_F0/c491673dd07e5590.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 50595,
+      "sample_rank": 51,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.17.06.37_veh-35_02609_05015/CAM_F0/ebd4609d1f6359c4.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 53592,
+      "sample_rank": 52,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.20.26.11_veh-35_00970_01216/CAM_F0/f632f68dc11a5f35.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 54070,
+      "sample_rank": 53,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.01.22.41_veh-14_04315_07102/CAM_F0/62121d4fef515fab.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 55541,
+      "sample_rank": 54,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.51.31_veh-35_05299_05468/CAM_F0/7335cef13a375109.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 55624,
+      "sample_rank": 55,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.51.31_veh-35_05299_05468/CAM_F0/02441d5984ed5c17.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 57648,
+      "sample_rank": 56,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.06.19.27.33_veh-28_00302_00794/CAM_F0/f81800a769c559b6.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 58955,
+      "sample_rank": 57,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.18.06.21_veh-38_05338_05486/CAM_F0/b0d2c989b2f757dc.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 59305,
+      "sample_rank": 58,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.17.31.36_veh-16_00016_00377/CAM_F0/5c08c62e0a5b5fde.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 59889,
+      "sample_rank": 59,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.15.02.19_veh-39_00214_00558/CAM_F0/a7fb60d11173576e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 59890,
+      "sample_rank": 60,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.15.02.19_veh-39_00214_00558/CAM_F0/fa46ed41068f5893.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 61060,
+      "sample_rank": 61,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.11.08.31.07_veh-50_02360_02684/CAM_F0/dbc4709f1d465f65.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 61323,
+      "sample_rank": 62,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.20.14.09_veh-26_00612_01016/CAM_F0/3eef558d421758c6.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 62143,
+      "sample_rank": 63,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.14.00.15_veh-28_01274_01543/CAM_F0/ab809fa751da5d5d.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 62576,
+      "sample_rank": 64,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.39.51_veh-26_03951_04180/CAM_F0/ab059fa534745335.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 63368,
+      "sample_rank": 65,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.16.12.19_veh-26_07208_07271/CAM_F0/76fbb7990c555972.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 64540,
+      "sample_rank": 66,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.17.26.26_veh-38_01860_02729/CAM_F0/08c63cc8be6b5df5.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 66538,
+      "sample_rank": 67,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.14.54.32_veh-16_01187_03336/CAM_F0/3a4d3b1dde345ff7.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 67201,
+      "sample_rank": 68,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.20.59.12_veh-38_06872_07220/CAM_F0/40020345e69a57f8.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 67442,
+      "sample_rank": 69,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.12.39.51_veh-26_00609_01168/CAM_F0/931467e571c35655.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 69470,
+      "sample_rank": 70,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.15.56.12_veh-16_00066_00818/CAM_F0/47c4afc86e9d5ca9.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 70073,
+      "sample_rank": 71,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.01.22.41_veh-14_02626_04289/CAM_F0/9560016af2b75bc7.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 71012,
+      "sample_rank": 72,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.14.50.36_veh-26_05055_05138/CAM_F0/452ce43011365745.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 71681,
+      "sample_rank": 73,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.15.34.53_veh-28_01820_02314/CAM_F0/e3cb9cc2ca445ce9.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 71916,
+      "sample_rank": 74,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.09.14.03.17_veh-12_02011_02101/CAM_F0/c1d6bed4f2d75923.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 73876,
+      "sample_rank": 75,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.11.44.56_veh-35_00059_00410/CAM_F0/5951640364955be9.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 77896,
+      "sample_rank": 76,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.11.07.47.13_veh-50_00736_00843/CAM_F0/fb81c7d193455400.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 79491,
+      "sample_rank": 77,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.13.28.41_veh-12_04719_04892/CAM_F0/308c9f34417b5409.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 80022,
+      "sample_rank": 78,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.15.14.27.22_veh-39_00868_01125/CAM_F0/9002f5ca13b15788.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 81426,
+      "sample_rank": 79,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.11.44.56_veh-35_04178_05084/CAM_F0/6038aefc96255279.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 81494,
+      "sample_rank": 80,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.11.44.56_veh-35_04178_05084/CAM_F0/49874d051eea5d0e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 81804,
+      "sample_rank": 81,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.14.14.03.45_veh-38_01927_01996/CAM_F0/1cb6752912765c5d.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 83034,
+      "sample_rank": 82,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.23.16.54.19_veh-35_01603_03271/CAM_F0/0b6e5f4106555e2e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 83523,
+      "sample_rank": 83,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.01.22.41_veh-14_00572_01716/CAM_F0/961a37deb3f255a2.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 84440,
+      "sample_rank": 84,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.16.16.01.30_veh-38_05274_05744/CAM_F0/c5248d4bbacd5552.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 85560,
+      "sample_rank": 85,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.06.24.06_veh-50_01566_01672/CAM_F0/3a6f3cbb0137592e.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 89809,
+      "sample_rank": 86,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.07.38.12_veh-50_01477_01565/CAM_F0/79354dc6086055ad.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 90513,
+      "sample_rank": 87,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.08.11.15_veh-50_00970_01211/CAM_F0/2bd2c54abf0f5ef4.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 92509,
+      "sample_rank": 88,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.06.24.06_veh-50_01311_01409/CAM_F0/4221b149adbc5c03.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 93601,
+      "sample_rank": 89,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.06.24.06_veh-50_00021_00383/CAM_F0/c5366b2cf17557e1.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 94198,
+      "sample_rank": 90,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.06.24.06_veh-50_00431_00527/CAM_F0/63448e4861cc5723.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 95481,
+      "sample_rank": 91,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.24.22.52.16_veh-35_03236_04096/CAM_F0/b2d0cccc4ecc55f2.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 95796,
+      "sample_rank": 92,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.04.03.05_veh-50_00536_00637/CAM_F0/fc70997896605342.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 96445,
+      "sample_rank": 93,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.09.14.18.43.41_veh-45_01245_01529/CAM_F0/3bd8f0749b8d5052.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 96715,
+      "sample_rank": 94,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.31.14.01.15_veh-40_00692_00977/CAM_F0/b2cb82dd36b658a8.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 96980,
+      "sample_rank": 95,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.31.12.54.56_veh-40_00024_00106/CAM_F0/bf5fd7c49535510c.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 99304,
+      "sample_rank": 96,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.06.08.12.54.54_veh-26_02323_02479/CAM_F0/e620032c0cd450e1.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 99713,
+      "sample_rank": 97,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.07.49.39_veh-52_00770_00905/CAM_F0/c185bb00bc9c5dab.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 99893,
+      "sample_rank": 98,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.10.05.04.38.41_veh-50_00996_01109/CAM_F0/a23edfbdf24c5b35.jpg"
+      ],
+      "num_future_blocks": 2
+    },
+    {
+      "jsonl_line_index": 102442,
+      "sample_rank": 99,
+      "images": [
+        "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.08.24.18.30.46_veh-08_02327_02583/CAM_F0/369ac022020a5c5c.jpg"
+      ],
+      "num_future_blocks": 2
+    }
+  ]
+}
