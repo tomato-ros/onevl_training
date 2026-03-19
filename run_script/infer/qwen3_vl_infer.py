@@ -36,8 +36,14 @@ def main():
     print(f"[INFO] image_processor.size = {processor.image_processor.size}")
 
 
-    with open(test_set_path, 'r') as f:
-        test_set = json.load(f)
+    if test_set_path.endswith(".jsonl"):
+        test_set = []
+        with open(test_set_path, 'r') as f:
+            for line in f:
+                test_set.append(json.loads(line))
+    else:
+        with open(test_set_path, 'r') as f:
+            test_set = json.load(f)
 
     output_list = []
     for item in tqdm(test_set):
@@ -112,7 +118,10 @@ def main():
         )
         print("=== Predicted Trajectory ===")
         print(output_text[0])
-        output_dict["GT"] = item["GT"]
+        if "GT" in item:
+            output_dict["GT"] = item["GT"]
+        else:
+            output_dict["GT"] = item["messages"][1]["content"]
         output_dict["output_text"] = output_text[0]
 
         # ==========================================

@@ -7,7 +7,10 @@ __pycache__/
 test.py
 # C extensions
 *.so
-
+core
+demo_data/navsim_vis4_text2_sample100_compare
+demo_data/navsim_vis4_text2_sample100_compare_512
+demo_data/navsim_predict0_compare_n10
 outputs
 # Distribution / packaging
 .Python

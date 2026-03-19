@@ -58,12 +58,12 @@ def main():
     parser.add_argument(
         "--jsonl",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "data", "navsim_vis4_text2.jsonl"),
+        default=os.path.join(_MS_SWIFT_ROOT, "data", "navsim_vis4_text2_512.jsonl"),
     )
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_vis4_text2_sample100_compare"),
+        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_vis4_text2_sample100_compare_512"),
     )
     parser.add_argument("-n", type=int, default=100, help="抽样条数")
     parser.add_argument("--seed", type=int, default=42)

@@ -14,78 +14,14 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug/v2-20260319-025148/checkpoint-4842
-TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
-OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
-OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/ar1/qwen3vl_stage0_cot/v3-20260317-160634/checkpoint-3892
+TEST_SET_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1/test_think_answer.jsonl
+OUTPUT_PATH=${MODEL_PATH}/infer_results/qwen3_vl_infer_ar_merged.json
 
-# ---- OneVL / Latent CoT hyperparameters ----
-NUM_LATENT=2
-NUM_LATENT_VIS=4
-MAX_NEW_TOKENS=1024
-
-# Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
-# Requires AUX_MODEL_PATH to be set.
-DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
-AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"}
-AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-false}
-C_THOUGHT=${C_THOUGHT:-2}
-MAX_EXPLAIN_TOKENS=${MAX_EXPLAIN_TOKENS:-512}
-ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
-
-# Visual decoder explain: set to "true" to enable visual aux decoder
-# Requires VISUAL_AUX_MODEL_PATH to be set.
-VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
-VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
-VISUAL_AUX_VISUAL_CONDITION=${VISUAL_AUX_VISUAL_CONDITION:-true}
-C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-4}
-MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-1024}
-
-# Original vocab / all subtokens / separate visual latent tokens (match training)
-USE_ORIGINAL_VOCAB=${USE_ORIGINAL_VOCAB:-true}
-USE_ALL_SUBTOKENS=${USE_ALL_SUBTOKENS:-true}
-USE_SEPARATE_VISUAL_LATENT_TOKENS=${USE_SEPARATE_VISUAL_LATENT_TOKENS:-true}
-
+MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-1024}
+ADD_ASSISTANT_PREFIX=""
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer_onevl.py"
-
-# Build extra flags for decoder explain
-EXTRA_FLAGS=""
-if [ "${DECODER_EXPLAIN}" = "true" ]; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --decoder_explain --aux_model_path ${AUX_MODEL_PATH} --c_thought ${C_THOUGHT} --max_explain_tokens ${MAX_EXPLAIN_TOKENS}"
-    if [ "${AUX_VISUAL_CONDITION}" = "true" ]; then
-        EXTRA_FLAGS="${EXTRA_FLAGS} --aux_visual_condition"
-    fi
-fi
-if [ "${VISUAL_DECODER_EXPLAIN}" = "true" ]; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --visual_decoder_explain --visual_aux_model_path ${VISUAL_AUX_MODEL_PATH} --c_thought_visual ${C_THOUGHT_VISUAL} --max_visual_tokens ${MAX_VISUAL_TOKENS}"
-    if [ "${VISUAL_AUX_VISUAL_CONDITION}" = "true" ]; then
-        EXTRA_FLAGS="${EXTRA_FLAGS} --visual_aux_visual_condition"
-    fi
-fi
-if [ "${USE_ORIGINAL_VOCAB}" = "true" ]; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --use_original_vocab"
-fi
-if [ "${USE_ALL_SUBTOKENS}" = "true" ]; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --use_all_subtokens"
-fi
-if [ "${USE_SEPARATE_VISUAL_LATENT_TOKENS}" = "true" ]; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --use_separate_visual_latent_tokens"
-fi
-
-echo "=== OneVL Inference Configuration ==="
-echo "  MODEL_PATH:              ${MODEL_PATH}"
-echo "  DECODER_EXPLAIN:         ${DECODER_EXPLAIN}"
-echo "  AUX_VISUAL_CONDITION:    ${AUX_VISUAL_CONDITION}"
-echo "  C_THOUGHT:               ${C_THOUGHT}"
-echo "  VISUAL_DECODER_EXPLAIN:  ${VISUAL_DECODER_EXPLAIN}"
-echo "  VISUAL_AUX_VISUAL_COND:  ${VISUAL_AUX_VISUAL_CONDITION}"
-echo "  C_THOUGHT_VISUAL:        ${C_THOUGHT_VISUAL}"
-echo "  USE_ORIGINAL_VOCAB:      ${USE_ORIGINAL_VOCAB}"
-echo "  USE_ALL_SUBTOKENS:       ${USE_ALL_SUBTOKENS}"
-echo "  USE_SEPARATE_VIS_TOKENS: ${USE_SEPARATE_VISUAL_LATENT_TOKENS}"
-echo "  EXTRA_FLAGS:             ${EXTRA_FLAGS}"
-echo "======================================"
+INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer.py"
 
 # ---- Multi-node: same as train.sh (MLP_WORKER_NUM, MLP_ROLE_INDEX) ----
 NNODES=${MLP_WORKER_NUM:-1}
@@ -131,8 +67,16 @@ if [ "${NODE_RANK}" -eq 0 ]; then
     echo "=== Splitting test set into ${TOTAL_WORKERS} shards ==="
     $PYTHON -c "
 import json, math
-with open('${TEST_SET_PATH}') as f:
-    data = json.load(f)
+if '${TEST_SET_PATH}'.endswith('.jsonl'):
+    data = []
+    with open('${TEST_SET_PATH}') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                data.append(json.loads(line))
+else:
+    with open('${TEST_SET_PATH}') as f:
+        data = json.load(f)
 n = ${TOTAL_WORKERS}
 shard_size = math.ceil(len(data) / n) if n else 0
 for i in range(n):
@@ -170,11 +114,8 @@ for SHARD_ID in $(seq ${MY_SHARD_START} $((MY_SHARD_END - 1))); do
         --test_set_path "${SHARD_INPUT}" \
         --output_path "${SHARD_OUTPUT}" \
         --device "cuda:${LOCAL_GPU}" \
-        --num_latent ${NUM_LATENT} \
-        --num_latent-vis ${NUM_LATENT_VIS} \
         --max_new_tokens ${MAX_NEW_TOKENS} \
-        ${ADD_ASSISTANT_PREFIX} \
-        ${EXTRA_FLAGS} &
+        ${ADD_ASSISTANT_PREFIX} &
 
     PIDS+=($!)
     LOCAL_GPU=$((LOCAL_GPU + 1))
@@ -221,8 +162,3 @@ print(f'Merged {len(merged)} samples from {len(shards)} shards -> ${OUTPUT_PATH}
 
 rm -rf "${SPLIT_DIR}"
 echo "=== Done. Output saved to ${OUTPUT_PATH} ==="
-
-## Step 5: Convert to eval format
-$PYTHON "${SCRIPT_DIR}/convert_to_eval.py" \
-    --input_path "${OUTPUT_PATH}" \
-    --output_path "${OUTPUT_PATH_EVAL}"

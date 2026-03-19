@@ -15,7 +15,7 @@ PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
 DECODER_EXPLAIN=true 
 VISUAL_DECODER_EXPLAIN=true
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_4e/v0-20260317-022102/checkpoint-6452
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug/v2-20260319-025148/checkpoint-4500
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged_eval.json
@@ -37,7 +37,7 @@ ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
 # Visual decoder explain: set to "true" to enable visual aux decoder
 # Requires VISUAL_AUX_MODEL_PATH to be set.
 VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
-VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/navsim/qwen3_vl_visual_aux_decoder_512/checkpoints/global_step_15634/hf_ckpt"}
+VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
 VISUAL_AUX_VISUAL_CONDITION=${VISUAL_AUX_VISUAL_CONDITION:-true}
 C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-4}
 MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-1024}
