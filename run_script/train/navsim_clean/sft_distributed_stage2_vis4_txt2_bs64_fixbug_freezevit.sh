@@ -15,7 +15,7 @@ set -x
 # ============================================================
 
 # ---------- Environment ----------
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
+source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
@@ -31,7 +31,7 @@ MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
 MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug/v1-20260318-094116/checkpoint-1614" ## previous stage2 model path
-AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
+AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/navsim/qwen3_vl_visual_aux_decoder_512/checkpoints/global_step_15634/hf_ckpt" ## pretrain visual aux decoder model path
 DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis4_text2.jsonl"

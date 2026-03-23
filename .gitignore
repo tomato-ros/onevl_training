@@ -6,6 +6,7 @@ __pycache__/
 *$py.class
 test.py
 # C extensions
+demo_data
 *.so
 core
 demo_data/navsim_vis4_text2_sample100_compare

@@ -16,6 +16,7 @@ in the same safetensors files. This script extracts sub-module weights by prefix
 import sys
 import os
 import json
+import ast
 import argparse
 import glob
 import time
@@ -27,6 +28,46 @@ from tqdm import tqdm
 from PIL import Image
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor, AutoConfig
 from safetensors.torch import load_file
+
+
+# ---------------------------------------------------------------------------
+# GT / waypoint parsing for coordinate prefill (--prefix_k)
+# ---------------------------------------------------------------------------
+
+def parse_gt_waypoints(gt_str):
+    """Parse GT or assistant trajectory string into a list of points (each point is a list).
+
+    Accepts forms like:
+      - ``[582, 963], [573, 942], ...`` (trainfmt ``GT`` field)
+      - ``[[582, 963], [573, 942], ...]`` (full list-of-lists)
+      - ``[x, y, heading], ...`` (navsim-style triples)
+    """
+    if not gt_str or not isinstance(gt_str, str):
+        return []
+    s = gt_str.strip()
+    if not s:
+        return []
+    try:
+        data = ast.literal_eval(s)
+    except (SyntaxError, ValueError):
+        try:
+            data = ast.literal_eval('[' + s + ']')
+        except (SyntaxError, ValueError):
+            return []
+    if not data:
+        return []
+    if isinstance(data[0], (int, float)):
+        return [list(data)]
+    return [list(p) for p in data]
+
+
+def format_gt_prefix_points(points):
+    """Format first k points as continuation after ``<answer>[`` (opens with ``[x, y], ...``)."""
+    parts = []
+    for p in points:
+        inner = ", ".join(str(int(x)) if isinstance(x, float) and x == int(x) else str(x) for x in p)
+        parts.append(f"[{inner}]")
+    return ", ".join(parts) + ","
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +577,9 @@ def main():
                              "latent positions for their respective decoders")
     parser.add_argument("--add_assistant_prefix", action="store_true",
                         help="Add assistant prefix to the input text")
+    parser.add_argument("--prefix_k", type=int, default=0,
+                        help="If >0, prefill the first K waypoints from GT after <answer>[ "
+                             "(e.g. ``[582, 963], [573, 942], ...``). Default 0 = disabled.")
 
     args = parser.parse_args()
     device = args.device
@@ -584,6 +628,7 @@ def main():
         assistant_prefix = latent_block
     else:
         assistant_prefix = ""
+
     print(f"[INFO] assistant_prefix = {repr(assistant_prefix)}")
 
     # ---- Load aux decoder + projection from checkpoint ----
@@ -649,6 +694,18 @@ def main():
         text = processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True)
         text += assistant_prefix
+
+        if args.prefix_k > 0:
+            gt_src = item.get("GT")
+            if not gt_src and len(item.get("messages", [])) > 1:
+                gt_src = item["messages"][1].get("content", "")
+            pts = parse_gt_waypoints(gt_src)
+            if pts:
+                k = min(args.prefix_k, len(pts))
+                prefix_piece = format_gt_prefix_points(pts[:k])
+                text += prefix_piece
+
+        print(f"  [prefix_k={args.prefix_k}] text: {text}")
 
         try:
             img = Image.open(test_image_path).convert("RGB")

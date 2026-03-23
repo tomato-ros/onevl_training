@@ -15,7 +15,7 @@ set -x
 # ============================================================
 
 # ---------- Environment ----------
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
+source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
@@ -30,9 +30,9 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
+MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis2_text2.jsonl"
-VAL_DATASET_PATH="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json"
+VAL_DATASET_PATH="/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json"
 
 
 # ---------- Launch training ----------

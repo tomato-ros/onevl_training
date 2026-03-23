@@ -3,7 +3,7 @@
 # Single-node: NNODES=1 (default), one split = full data.
 # Multi-node: set MLP_WORKER_NUM, MLP_ROLE_INDEX (same as train launcher). RUN_ID synced via OUTPUT_DIR when launcher does not set it.
 # Requires shared filesystem: OUTPUT_DIR (result_path's dir) and VAL_DATASET must be visible to all nodes (e.g. NFS); otherwise some nodes will hang waiting for split_done.
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
+source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
 rm -rf /root/.cache
 
 cd /e2e-data/evad-tech-vla/lujinghui/ms-swift

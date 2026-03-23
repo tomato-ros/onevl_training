@@ -6,7 +6,7 @@ set -x
 # For multi-GPU, use sft_distributed.sh instead
 # ============================================================
 
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
+source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
@@ -16,7 +16,7 @@ export TF_CPP_MIN_LOG_LEVEL=3
 # ---------- Latent CoT configuration ----------
 export LATENT_COT_C_THOUGHT=6
 export LATENT_COT_C_THOUGHT_VISUAL=6
-export LATENT_COT_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
+export LATENT_COT_AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=1.0
@@ -30,7 +30,7 @@ export LATENT_COT_FREEZE_AUX_DECODER=true
 mkdir -p "${SCRIPT_DIR}/logs"
 
 CUDA_VISIBLE_DEVICES=0 python swift/cli/sft.py \
-    --model /e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct-latent \
+    --model //e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct-latent \
     --model_type qwen3_vl_latent_cot \
     --train_type full \
     --dataset "${SCRIPT_DIR}/data/navsim_latent_cot_100.jsonl" \

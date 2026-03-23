@@ -168,7 +168,7 @@ def compute_explain_loss(
 
     aux_embedding = _get_aux_input_embeddings(aux_decoder)
     loss_fct = CrossEntropyLoss(reduction='sum')
-    loss_all = 0.0
+    loss_all = torch.tensor(0.0, device=last_hidden_states.device)
     num_steps = 0
 
     for b in range(batch_size):
@@ -273,7 +273,7 @@ def compute_visual_explain_loss(
 
     vis_aux_embedding = _get_aux_input_embeddings(visual_aux_decoder)
     loss_fct = CrossEntropyLoss(reduction='sum')
-    loss_all = 0.0
+    loss_all = torch.tensor(0.0, device=last_hidden_states.device)
     num_items = 0
 
     for b in range(batch_size):

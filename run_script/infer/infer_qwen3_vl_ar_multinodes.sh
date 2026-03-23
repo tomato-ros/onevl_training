@@ -11,11 +11,11 @@
 #   Assumes same number of GPUs per node.
 set -e
 
-PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
+PYTHON=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
 MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/qwen3_vl_latent_cot_distributed/v0-20260312-150448/checkpoint-3228
-TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
+TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/latent_qwen3_vl/qwen3_vl_infer_all_merged.json
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

@@ -11,7 +11,7 @@
 #   Assumes same number of GPUs per node.
 set -e
 
-PYTHON=/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/python3
+PYTHON=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
 MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/ar1/qwen3vl_stage0_answer/v6-20260317-161123/checkpoint-3892

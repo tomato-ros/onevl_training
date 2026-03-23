@@ -17,7 +17,7 @@ set -x
 # ============================================================
 
 # ---------- Environment ----------
-source /e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/.venv/bin/activate
+source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
@@ -34,7 +34,7 @@ NPROC=${NPROC:-1}
 #   2. Patch with latent CoT modules (fresh from AUX_MODEL_PATH)
 #   3. Restore _latent_cot_* weights from the checkpoint safetensors
 MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1/v0-20260313-124424/checkpoint-1000"
-AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/lujinghui/models/qwen3vl/Qwen3-VL-4B-Instruct"
+AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 VISUAL_AUX_MODEL_PATH=""
 DATASET_PATH="${SCRIPT_DIR}/data/navsim_latent_cot_full.jsonl"
 VAL_DATASET_PATH="${SCRIPT_DIR}/data/navsim_val_latent_cot.jsonl"

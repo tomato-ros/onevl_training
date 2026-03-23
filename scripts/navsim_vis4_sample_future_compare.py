@@ -40,12 +40,12 @@ def reservoir_sample_lines(path: str, k: int, seed: int) -> list[tuple[int, str]
     reservoir: list[tuple[int, str]] = []
     with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
-            if i < k:
-                reservoir.append((i, line))
-            else:
-                j = rng.randint(0, i)
-                if j < k:
-                    reservoir[j] = (i, line)
+            # if i < k:
+            reservoir.append((i, line))
+            # else:
+            #     j = rng.randint(0, i)
+            #     if j < k:
+            #         reservoir[j] = (i, line)
     return reservoir
 
 
@@ -58,20 +58,18 @@ def main():
     parser.add_argument(
         "--jsonl",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "data", "navsim_vis4_text2_512.jsonl"),
-    )
+        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_test_cot_full_idx_trainfmt_with_future_tokens_256.jsonl")
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_vis4_text2_sample100_compare_512"),
-    )
-    parser.add_argument("-n", type=int, default=100, help="抽样条数")
+        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/demo_data/navsim_gt_compare")
+    parser.add_argument("-n", type=int, default=20000, help="抽样条数")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument(
         "--model_root",
         type=str,
-        default=None,
+        default="/e2e-data/embodied-research-data/opendata/roadworks/models/emu35",
         help="Emu3.5 模型根目录（含 Emu3.5-VisionTokenizer），默认 lujinghui/models/emu35",
     )
     parser.add_argument(

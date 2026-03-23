@@ -49,17 +49,7 @@ def get_input_images_from_messages(messages: list) -> list[str]:
 
 
 def main():
-    default_predict = os.path.join(
-        _MS_SWIFT_ROOT,
-        "outputs",
-        "navsim",
-        "qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_freezevit",
-        "v0-20260318-123827",
-        "checkpoint-1000",
-        "infer_results_prefill_explain",
-        "_splits_1190631",
-        "predict_0.json",
-    )
+    default_predict = "/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512/v1-20260320-093019/checkpoint-4500/infer_results_prefill_explain/_splits_2898718/predict_0.json"
     parser = argparse.ArgumentParser(
         description="从 predict_*.json 保存原图 + visual token 解码图便于对比"
     )
@@ -72,14 +62,14 @@ def main():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_predict0_compare"),
+        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_stage2_compare_512"),
     )
-    parser.add_argument("-n", type=int, default=50, help="最多处理样本数（按顺序取前 n 条）")
+    parser.add_argument("-n", type=int, default=20000, help="最多处理样本数（按顺序取前 n 条）")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument(
         "--model_root",
         type=str,
-        default=None,
+        default="/e2e-data/embodied-research-data/opendata/roadworks/models/emu35",
         help="Emu3.5 模型根目录（含 Emu3.5-VisionTokenizer）",
     )
     args = parser.parse_args()
@@ -96,16 +86,7 @@ def main():
         sys.exit(1)
 
     model_root = args.model_root
-    if not model_root:
-        for cand in (
-            os.path.join(LUJINGHUI_ROOT, "lujinghui", "models", "emu35"),
-            os.path.join(LUJINGHUI_ROOT, "models", "emu35"),
-        ):
-            if os.path.isdir(cand):
-                model_root = cand
-                break
-        if not model_root:
-            model_root = os.path.join(LUJINGHUI_ROOT, "lujinghui", "models", "emu35")
+
 
     with open(args.predict_json, encoding="utf-8") as f:
         data = json.load(f)
