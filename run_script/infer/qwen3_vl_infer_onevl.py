@@ -327,28 +327,43 @@ def get_aux_input_embeddings(aux_decoder):
     return aux_decoder.get_input_embeddings()
 
 
-def call_aux_decoder_lm(aux_decoder, inputs_embeds, use_cache=False):
+def call_aux_decoder_lm(
+    aux_decoder, inputs_embeds, use_cache=False, past_key_values=None,
+):
     """Call the aux decoder's language model directly, bypassing the VL wrapper.
 
     Qwen3VLForConditionalGeneration.forward -> Qwen3VLModel.forward calls
     get_rope_index(input_ids, ...) which crashes when input_ids is None.
     By calling the inner language_model + lm_head directly, we avoid this.
     For non-VL models (AutoModelForCausalLM), we fall back to the normal call.
+
+    Returns:
+        (logits, past_key_values): logits (B, seq, vocab); past_key_values is
+        None when use_cache is False.
     """
     if (hasattr(aux_decoder, 'model')
             and hasattr(aux_decoder.model, 'language_model')
             and hasattr(aux_decoder, 'lm_head')):
         lm_out = aux_decoder.model.language_model(
-            inputs_embeds=inputs_embeds, use_cache=use_cache)
-        hidden = lm_out[0]
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            past_key_values=past_key_values,
+        )
+        hidden = (lm_out.last_hidden_state if hasattr(lm_out, 'last_hidden_state')
+                  else lm_out[0])
         logits = aux_decoder.lm_head(hidden)
-
-        class _AuxOut:
-            pass
-        out = _AuxOut()
-        out.logits = logits
-        return out
-    return aux_decoder(inputs_embeds=inputs_embeds, use_cache=use_cache)
+        new_past = (lm_out.past_key_values if use_cache and hasattr(lm_out, 'past_key_values')
+                    else None)
+        return logits, new_past
+    out = aux_decoder(
+        inputs_embeds=inputs_embeds,
+        use_cache=use_cache,
+        past_key_values=past_key_values,
+    )
+    logits = out.logits if hasattr(out, 'logits') else out[0]
+    new_past = (out.past_key_values if use_cache and hasattr(out, 'past_key_values')
+                else None)
+    return logits, new_past
 
 
 def extract_visual_embeds(student_embeds, input_ids, image_token_id, video_token_id=None):
@@ -419,16 +434,17 @@ def decode_latent_with_aux(
               f"combined_shape={combined.shape}")
 
         generated_ids = []
+        past_kv = None
         cur_embeds = combined
         for _ in range(max_explain_tokens):
-            out = call_aux_decoder_lm(aux_decoder, cur_embeds, use_cache=False)
-            logits = out.logits if hasattr(out, 'logits') else out[0]
+            logits, past_kv = call_aux_decoder_lm(
+                aux_decoder, cur_embeds, use_cache=True, past_key_values=past_kv)
             next_id = logits[:, -1, :].argmax(dim=-1)
             generated_ids.append(next_id.item())
             if next_id.item() == tokenizer.eos_token_id:
                 break
             next_embed = aux_embedding(next_id).unsqueeze(1)
-            cur_embeds = torch.cat([cur_embeds, next_embed], dim=1)
+            cur_embeds = next_embed
 
         text = tokenizer.decode(generated_ids, skip_special_tokens=True)
         results.append(text)
@@ -514,17 +530,18 @@ def decode_latent_with_visual_aux(
               f"combined_shape={combined.shape}")
 
         generated_ids = []
+        past_kv = None
         cur_embeds = combined
         eos_id = vis_aux_tokenizer.eos_token_id
         for _ in range(max_visual_tokens):
-            out = call_aux_decoder_lm(visual_aux_decoder, cur_embeds, use_cache=False)
-            logits = out.logits if hasattr(out, 'logits') else out[0]
+            logits, past_kv = call_aux_decoder_lm(
+                visual_aux_decoder, cur_embeds, use_cache=True, past_key_values=past_kv)
             next_id = logits[:, -1, :].argmax(dim=-1)
             generated_ids.append(next_id.item())
             if next_id.item() == eos_id:
                 break
             next_embed = aux_embedding(next_id).unsqueeze(1)
-            cur_embeds = torch.cat([cur_embeds, next_embed], dim=1)
+            cur_embeds = next_embed
 
         text = vis_aux_tokenizer.decode(generated_ids, skip_special_tokens=True)
         results.append(text)

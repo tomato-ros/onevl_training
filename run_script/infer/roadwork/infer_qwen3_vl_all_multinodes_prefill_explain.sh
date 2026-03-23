@@ -15,7 +15,7 @@ PYTHON=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/python3
 DECODER_EXPLAIN=true 
 VISUAL_DECODER_EXPLAIN=true
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_vit_1e-6_512_2frames/v1-20260322-053541/checkpoint-1260
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512/v1-20260323-045940/checkpoint-630
 TEST_SET_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/roadwork/conversation_data_test_full_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged_eval.json

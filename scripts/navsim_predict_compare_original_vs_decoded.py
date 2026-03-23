@@ -49,7 +49,7 @@ def get_input_images_from_messages(messages: list) -> list[str]:
 
 
 def main():
-    default_predict = "/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512/v1-20260320-093019/checkpoint-4500/infer_results_prefill_explain/_splits_2898718/predict_0.json"
+    default_predict = "/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512/v1-20260323-045940/checkpoint-630/infer_results_prefill_explain/_splits_1774253532/predict_5.json"
     parser = argparse.ArgumentParser(
         description="从 predict_*.json 保存原图 + visual token 解码图便于对比"
     )
@@ -62,7 +62,7 @@ def main():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "navsim_stage2_compare_512"),
+        default=os.path.join(_MS_SWIFT_ROOT, "demo_data", "roadwork_stage2_compare_512"),
     )
     parser.add_argument("-n", type=int, default=20000, help="最多处理样本数（按顺序取前 n 条）")
     parser.add_argument("--device", type=str, default="cuda:0")

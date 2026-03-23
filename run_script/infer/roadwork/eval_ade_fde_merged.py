@@ -94,7 +94,7 @@ def main() -> None:
     p.add_argument(
         "--merged_json",
         type=Path,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3vl_4b_stage0_vis4_txt2/v0-20260316-133227/checkpoint-510/infer_results_prefill/qwen3_vl_infer_onevl_merged.json",
+        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512/v1-20260323-045940/checkpoint-630/infer_results_prefill/qwen3_vl_infer_onevl_merged.json",
         help="Path to qwen3_vl_infer_onevl_merged.json",
     )
     p.add_argument(

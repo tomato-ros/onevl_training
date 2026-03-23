@@ -30,7 +30,7 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_256_2frames/v0-20260322-041711/checkpoint-252" ## previous stage1 model path
+MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_256/v0-20260323-032444/checkpoint-252" ## previous stage1 model path
 AUX_MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
@@ -78,7 +78,7 @@ swift sft \
     --learning_rate 1e-4 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 4 \
     --save_strategy epoch \
     --eval_strategy epoch \
     --save_total_limit 8 \
@@ -90,7 +90,7 @@ swift sft \
     --freeze_llm false \
     --freeze_aligner false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256_2frames" \
+    --output_dir "${SCRIPT_DIR}/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256" \
     --gradient_checkpointing true \
-    --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256_2frames.log"
+    --deepspeed zero2 \
+  2>&1 | tee "${SCRIPT_DIR}/logs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256.log"
