@@ -16,7 +16,7 @@ DECODER_EXPLAIN=true
 VISUAL_DECODER_EXPLAIN=true
 # export LATENT_COT_DEBUG_AUX_VIT_EMBED=true   # log whether text/visual aux use identical ViT rows (batch 0; max lines: LATENT_COT_DEBUG_AUX_VIT_EMBED_MAX, default 20)
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-031631/checkpoint-1260
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-031631/checkpoint-1008
 TEST_SET_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/roadwork/conversation_data_test_full_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill_explain/qwen3_vl_infer_onevl_merged_eval.json

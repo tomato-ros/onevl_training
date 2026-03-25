@@ -152,7 +152,7 @@ def main() -> None:
     p.add_argument(
         "--merged_json",
         type=Path,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_txtw01/v0-20260324-125825/checkpoint-1008/infer_results_prefill/qwen3_vl_infer_onevl_merged.json",
+        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-031631/checkpoint-1260/infer_results_prefill/qwen3_vl_infer_onevl_merged.json",
         help="Path to qwen3_vl_infer_onevl_merged.json",
     )
     p.add_argument(
