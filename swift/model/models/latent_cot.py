@@ -11,6 +11,7 @@ as submodules, and forward is monkey-patched to compute the combined loss.
 """
 
 from dataclasses import dataclass
+import os
 from types import MethodType
 from typing import List, Optional
 
@@ -148,12 +149,82 @@ def _extract_visual_embeds(student_embeds, batch_idx, input_ids, image_token_id,
     return student_embeds[batch_idx][vis_mask]
 
 
+def _latent_cot_debug_aux_vit_embed() -> bool:
+    v = os.environ.get('LATENT_COT_DEBUG_AUX_VIT_EMBED', '')
+    return str(v).lower() in ('1', 'true', 'yes', 'on')
+
+
+def _latent_cot_debug_aux_vit_max_prints() -> int:
+    try:
+        return max(0, int(os.environ.get('LATENT_COT_DEBUG_AUX_VIT_EMBED_MAX', '5')))
+    except ValueError:
+        return 5
+
+
+_latent_cot_debug_aux_vit_print_count = 0
+
+
+def _record_aux_vit_for_debug(
+    holder: Optional[dict], key: str, batch_idx: int, vis_embeds: Optional[torch.Tensor],
+) -> None:
+    if holder is None or batch_idx != 0:
+        return
+    holder[key] = None if vis_embeds is None else vis_embeds.detach()
+
+
+def _flush_aux_vit_debug_compare(holder: Optional[dict]) -> None:
+    global _latent_cot_debug_aux_vit_print_count
+    if not holder or not _latent_cot_debug_aux_vit_embed():
+        return
+    mx = _latent_cot_debug_aux_vit_max_prints()
+    if mx > 0 and _latent_cot_debug_aux_vit_print_count >= mx:
+        return
+    missing = object()
+    t = holder.pop('text_aux_vit', missing)
+    v = holder.pop('visual_aux_vit', missing)
+    lim = str(mx) if mx > 0 else 'inf'
+
+    if t is missing or v is missing:
+        _latent_cot_debug_aux_vit_print_count += 1
+        print(
+            f'[LatentCoT DEBUG AUX-VIT] batch0 compare skipped: '
+            f'text_recorded={t is not missing}, visual_recorded={v is not missing} '
+            f'(enable both aux decoders + both visual conditions to compare) '
+            f'[{_latent_cot_debug_aux_vit_print_count}/{lim}]')
+        holder.clear()
+        return
+    if t is None and v is None:
+        _latent_cot_debug_aux_vit_print_count += 1
+        print(
+            f'[LatentCoT DEBUG AUX-VIT] batch0: text_aux and visual_aux ViT prefix both None '
+            f'[{_latent_cot_debug_aux_vit_print_count}/{lim}]')
+        holder.clear()
+        return
+    if (t is None) != (v is None):
+        _latent_cot_debug_aux_vit_print_count += 1
+        print(
+            f'[LatentCoT DEBUG AUX-VIT] batch0 MISMATCH: text_ve is None={t is None}, '
+            f'visual_ve is None={v is None} [{_latent_cot_debug_aux_vit_print_count}/{lim}]')
+        holder.clear()
+        return
+    same_shape = t.shape == v.shape
+    max_diff = (t.float() - v.float()).abs().max().item() if same_shape else None
+    all_eq = same_shape and bool(torch.equal(t, v))
+    _latent_cot_debug_aux_vit_print_count += 1
+    print(
+        f'[LatentCoT DEBUG AUX-VIT] train batch0 text_aux vs visual_aux ViT rows: '
+        f'shape={tuple(t.shape)}, identical={all_eq}, max_abs_diff={max_diff} '
+        f'[{_latent_cot_debug_aux_vit_print_count}/{lim}]')
+    holder.clear()
+
+
 def compute_explain_loss(
     last_hidden_states, input_ids, latent_lists, explainable_ids_list,
     batch_size, aux_decoder, latent_proj, c_thought,
     student_embeds=None, use_visual_condition=False,
     image_token_id=None, video_token_id=None,
     n_markers_list=None,
+    debug_aux_vit_holder: Optional[dict] = None,
 ):
     """Compute auxiliary decoder loss.
 
@@ -182,6 +253,8 @@ def compute_explain_loss(
                 student_embeds, b, input_ids, image_token_id, video_token_id)
             if vis_embeds is not None:
                 n_vis = vis_embeds.shape[0]
+
+        _record_aux_vit_for_debug(debug_aux_vit_holder, 'text_aux_vit', b, vis_embeds)
 
         n_positions = len(latent_lists[b])
         if n_markers_list is not None:
@@ -261,6 +334,7 @@ def compute_visual_explain_loss(
     student_embeds=None, use_visual_condition=False,
     image_token_id=None, video_token_id=None,
     n_markers_list=None,
+    debug_aux_vit_holder: Optional[dict] = None,
 ):
     """Compute visual auxiliary decoder loss.
 
@@ -296,6 +370,8 @@ def compute_visual_explain_loss(
                 student_embeds, b, input_ids, image_token_id, video_token_id)
             if vis_embeds is not None:
                 n_vis = vis_embeds.shape[0]
+
+        _record_aux_vit_for_debug(debug_aux_vit_holder, 'visual_aux_vit', b, vis_embeds)
 
         target_tensor = torch.tensor(
             vis_token_ids, device=last_hidden_states.device, dtype=torch.long)
@@ -980,6 +1056,10 @@ def _latent_cot_forward(
         image_token_id = getattr(self.config, 'image_token_id', None)
         video_token_id = getattr(self.config, 'video_token_id', None)
 
+        debug_aux_vit_holder = {}
+        if not _latent_cot_debug_aux_vit_embed():
+            debug_aux_vit_holder = None  # type: ignore
+
         student_embeds = None
         if txt_vis_cond or vis_vis_cond:
             student_embeds = self._captured_vit_embeds
@@ -1021,6 +1101,7 @@ def _latent_cot_forward(
                 image_token_id=image_token_id,
                 video_token_id=video_token_id,
                 n_markers_list=n_markers_list,
+                debug_aux_vit_holder=debug_aux_vit_holder,
             )
             explain_loss = explain_loss * config.explain_loss_weight
 
@@ -1090,9 +1171,12 @@ def _latent_cot_forward(
                     image_token_id=image_token_id,
                     video_token_id=video_token_id,
                     n_markers_list=vis_n_markers_list,
+                    debug_aux_vit_holder=debug_aux_vit_holder,
                 )
                 visual_explain_loss = (visual_explain_loss
                                        * config.visual_explain_loss_weight)
+
+        _flush_aux_vit_debug_compare(debug_aux_vit_holder)
 
     # Store aux losses on the model itself because accelerate's convert_to_fp32
     # reconstructs ModelOutput from declared fields only, dropping dynamic attrs.

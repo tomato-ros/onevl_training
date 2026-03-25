@@ -78,7 +78,7 @@ swift sft \
     --learning_rate 1e-4 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 2 \
     --save_strategy epoch \
     --eval_strategy epoch \
     --save_total_limit 8 \
@@ -90,7 +90,7 @@ swift sft \
     --freeze_llm false \
     --freeze_aligner false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512" \
+    --output_dir "${SCRIPT_DIR}/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64" \
     --gradient_checkpointing true \
     --deepspeed zero2 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64.log"

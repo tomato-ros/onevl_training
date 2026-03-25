@@ -375,66 +375,6 @@ def extract_visual_embeds(student_embeds, input_ids, image_token_id, video_token
     return student_embeds[vis_mask]
 
 
-def _debug_aux_vit_embed_enabled() -> bool:
-    v = os.environ.get('LATENT_COT_DEBUG_AUX_VIT_EMBED', '')
-    return str(v).lower() in ('1', 'true', 'yes', 'on')
-
-
-def _debug_aux_vit_embed_max_prints() -> int:
-    try:
-        return max(0, int(os.environ.get('LATENT_COT_DEBUG_AUX_VIT_EMBED_MAX', '20')))
-    except ValueError:
-        return 20
-
-
-_infer_debug_aux_vit_print_count = 0
-
-
-def _flush_infer_aux_vit_debug_compare(holder):
-    global _infer_debug_aux_vit_print_count
-    if not holder or not _debug_aux_vit_embed_enabled():
-        return
-    mx = _debug_aux_vit_embed_max_prints()
-    if mx > 0 and _infer_debug_aux_vit_print_count >= mx:
-        return
-    missing = object()
-    t = holder.pop('text_aux_vit', missing)
-    v = holder.pop('visual_aux_vit', missing)
-    lim = str(mx) if mx > 0 else 'inf'
-
-    if t is missing or v is missing:
-        _infer_debug_aux_vit_print_count += 1
-        print(
-            f'[Infer DEBUG AUX-VIT] batch0 compare skipped: '
-            f'text_recorded={t is not missing}, visual_recorded={v is not missing} '
-            f'[{_infer_debug_aux_vit_print_count}/{lim}]')
-        holder.clear()
-        return
-    if t is None and v is None:
-        _infer_debug_aux_vit_print_count += 1
-        print(
-            f'[Infer DEBUG AUX-VIT] batch0: text_aux and visual_aux ViT prefix both None '
-            f'[{_infer_debug_aux_vit_print_count}/{lim}]')
-        holder.clear()
-        return
-    if (t is None) != (v is None):
-        _infer_debug_aux_vit_print_count += 1
-        print(
-            f'[Infer DEBUG AUX-VIT] batch0 MISMATCH: text_ve is None={t is None}, '
-            f'visual_ve is None={v is None} [{_infer_debug_aux_vit_print_count}/{lim}]')
-        holder.clear()
-        return
-    same_shape = t.shape == v.shape
-    max_diff = (t.float() - v.float()).abs().max().item() if same_shape else None
-    all_eq = same_shape and bool(torch.equal(t, v))
-    _infer_debug_aux_vit_print_count += 1
-    print(
-        f'[Infer DEBUG AUX-VIT] batch0 text_aux vs visual_aux ViT rows: '
-        f'shape={tuple(t.shape)}, identical={all_eq}, max_abs_diff={max_diff} '
-        f'[{_infer_debug_aux_vit_print_count}/{lim}]')
-    holder.clear()
-
-
 @torch.no_grad()
 def decode_latent_with_aux(
     model, aux_decoder, latent_proj, input_ids, hidden_states,
@@ -443,7 +383,6 @@ def decode_latent_with_aux(
     use_visual_condition=False, image_token_id=None, video_token_id=None,
     max_explain_tokens=512,
     vit_embeds=None,
-    debug_aux_vit_holder=None,
 ):
     """Use the auxiliary decoder to generate explicit reasoning from latent hidden states.
 
@@ -460,7 +399,6 @@ def decode_latent_with_aux(
     results = []
 
     aux_embedding = get_aux_input_embeddings(aux_decoder)
-    vit_embeds_hook = vit_embeds
 
     for b in range(batch_size):
         if text_positions_list is not None:
@@ -476,27 +414,23 @@ def decode_latent_with_aux(
             latent_embeds = latent_proj(latent_embeds)
 
         parts = []
-        vit_cond_rows = None
         if use_visual_condition and image_token_id is not None:
-            if vit_embeds_hook is not None:
-                student_embeds_b = vit_embeds_hook[b]
+            if vit_embeds is not None:
+                student_embeds_b = vit_embeds[b]
             else:
                 embed_fn = (model.model.get_input_embeddings()
                             if hasattr(model, 'model') else model.get_input_embeddings())
                 student_embeds_b = embed_fn(input_ids[b])
-            vit_cond_rows = extract_visual_embeds(
+            vis_embeds = extract_visual_embeds(
                 student_embeds_b, input_ids[b], image_token_id, video_token_id)
-            if vit_cond_rows is not None:
-                parts.append(vit_cond_rows)
-        if debug_aux_vit_holder is not None and b == 0:
-            debug_aux_vit_holder['text_aux_vit'] = (
-                None if vit_cond_rows is None else vit_cond_rows.detach())
+            if vis_embeds is not None:
+                parts.append(vis_embeds)
         parts.append(latent_embeds)
         combined = torch.cat(parts, dim=0).unsqueeze(0)
 
         print(f"  [TextAux] batch={b}, n_positions={len(positions)}, "
               f"vis_cond={use_visual_condition}, "
-              f"vit_hook={'yes' if vit_embeds_hook is not None else 'no'}, "
+              f"vit_embeds={'hook' if vit_embeds is not None else 'placeholder'}, "
               f"combined_shape={combined.shape}")
 
         generated_ids = []
@@ -526,7 +460,6 @@ def decode_latent_with_visual_aux(
     use_visual_condition=False, image_token_id=None, video_token_id=None,
     max_visual_tokens=512,
     vit_embeds=None,
-    debug_aux_vit_holder=None,
 ):
     """Use the visual auxiliary decoder to generate future visual tokens from latent states.
 
@@ -558,7 +491,6 @@ def decode_latent_with_visual_aux(
     batch_size = input_ids.size(0)
     results = []
     aux_embedding = get_aux_input_embeddings(visual_aux_decoder)
-    vit_embeds_hook = vit_embeds
 
     for b in range(batch_size):
         if visual_positions_list is not None:
@@ -577,28 +509,24 @@ def decode_latent_with_visual_aux(
 
         parts = []
         n_vis = 0
-        vit_cond_rows = None
         if use_visual_condition and image_token_id is not None:
-            if vit_embeds_hook is not None:
-                student_embeds_b = vit_embeds_hook[b]
+            if vit_embeds is not None:
+                student_embeds_b = vit_embeds[b]
             else:
                 embed_fn = (model.model.get_input_embeddings()
                             if hasattr(model, 'model') else model.get_input_embeddings())
                 student_embeds_b = embed_fn(input_ids[b])
-            vit_cond_rows = extract_visual_embeds(
+            vis_embeds = extract_visual_embeds(
                 student_embeds_b, input_ids[b], image_token_id, video_token_id)
-            if vit_cond_rows is not None:
-                n_vis = vit_cond_rows.shape[0]
-                parts.append(vit_cond_rows)
-        if debug_aux_vit_holder is not None and b == 0:
-            debug_aux_vit_holder['visual_aux_vit'] = (
-                None if vit_cond_rows is None else vit_cond_rows.detach())
+            if vis_embeds is not None:
+                n_vis = vis_embeds.shape[0]
+                parts.append(vis_embeds)
         parts.append(latent_embeds)
         combined = torch.cat(parts, dim=0).unsqueeze(0)
 
         print(f"  [VisualAux] batch={b}, n_positions={len(positions)}, "
               f"n_vis={n_vis}, vis_cond={use_visual_condition}, "
-              f"vit_hook={'yes' if vit_embeds_hook is not None else 'no'}, "
+              f"vit_embeds={'hook' if vit_embeds is not None else 'placeholder'}, "
               f"combined_shape={combined.shape}")
 
         generated_ids = []
@@ -710,7 +638,7 @@ def main():
 
     # ---- Build latent prefix ----
     if args.num_latent_vis > 0:
-        latent_block = "<|start-latent-vis|>" + "<|latent-vis|>" * args.num_latent_vis + "<|end-latent-vis|><|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
+        latent_block = "<<"*55 + "<|end-latent|><answer>["
     else:
         latent_block = "<|start-latent|>" + "<|latent|>" * args.num_latent + "<|end-latent|><answer>["
     if args.add_assistant_prefix:
@@ -877,8 +805,6 @@ def main():
                     print(f"    Are ViT embeds diverse (std > 1e-6)? "
                           f"{_vit_at_img.float().std(dim=0).mean().item() > 1e-6}")
 
-            _aux_vit_debug_holder = {} if _debug_aux_vit_embed_enabled() else None
-
             if aux_decoder is not None:
                 explains = decode_latent_with_aux(
                     model, aux_decoder, latent_proj,
@@ -890,7 +816,6 @@ def main():
                     video_token_id=video_token_id,
                     max_explain_tokens=args.max_explain_tokens,
                     vit_embeds=vit_embeds,
-                    debug_aux_vit_holder=_aux_vit_debug_holder,
                 )
                 if explains and explains[0]:
                     output_dict["decoder_explain"] = explains[0]
@@ -906,12 +831,9 @@ def main():
                     video_token_id=video_token_id,
                     max_visual_tokens=args.max_visual_tokens,
                     vit_embeds=vit_embeds,
-                    debug_aux_vit_holder=_aux_vit_debug_holder,
                 )
                 if vis_explains and vis_explains[0]:
                     output_dict["visual_decoder_explain"] = vis_explains[0]
-
-            _flush_infer_aux_vit_debug_compare(_aux_vit_debug_holder)
 
             del fwd_out, hidden_states
             torch.cuda.empty_cache()

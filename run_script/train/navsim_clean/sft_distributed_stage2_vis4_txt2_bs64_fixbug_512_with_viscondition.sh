@@ -30,7 +30,7 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512/v0-20260319-113919/checkpoint-1614" ## previous stage2 model path
+MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-024404/checkpoint-1614" ## previous stage2 model path
 AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad_512/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
@@ -44,7 +44,7 @@ export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
 export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1
-export LATENT_COT_AUX_VISUAL_CONDITION=false
+export LATENT_COT_AUX_VISUAL_CONDITION=true
 export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true
 # With DeepSpeed zero3 + multi-GPU, memory is sufficient to train aux decoders
@@ -90,7 +90,7 @@ swift sft \
     --freeze_llm false \
     --freeze_aligner false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition" \
     --gradient_checkpointing true \
     --deepspeed zero2 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition.log"

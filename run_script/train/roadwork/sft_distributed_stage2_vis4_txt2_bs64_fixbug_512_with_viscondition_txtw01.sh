@@ -30,22 +30,24 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512/v0-20260319-113919/checkpoint-1614" ## previous stage2 model path
-AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
+MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/roadwork/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512_with_viscondition_txtw01/v0-20260324-090055/checkpoint-252" ## previous stage1 model path
+AUX_MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
 # VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
 VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad_512/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis4_text2_512.jsonl"
-VAL_DATASET_PATH="${SCRIPT_DIR}/data/navsim_val_latent_cot.jsonl"
+DATASET_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/roadwork/roadwork_data_512_2frames.jsonl"
+VAL_DATASET_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/roadwork/roadwork_data_512_2frames_100.jsonl"
 
 # ---------- Latent CoT configuration ----------
 export LATENT_COT_C_THOUGHT=2
 export LATENT_COT_C_THOUGHT_VISUAL=4
 export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
-export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0
+export LATENT_COT_EXPLAIN_LOSS_WEIGHT=0.1
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1
-export LATENT_COT_AUX_VISUAL_CONDITION=false
+export LATENT_COT_AUX_VISUAL_CONDITION=true
 export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true
+# Compare ViT rows fed to text aux vs visual aux (batch 0; default max 5 lines, override with LATENT_COT_DEBUG_AUX_VIT_EMBED_MAX)
+# export LATENT_COT_DEBUG_AUX_VIT_EMBED=true
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true
 # With DeepSpeed zero3 + multi-GPU, memory is sufficient to train aux decoders
 export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
@@ -79,9 +81,9 @@ swift sft \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
     --gradient_accumulation_steps 2 \
-    --save_steps 500 \
-    --eval_steps 500 \
-    --save_total_limit 10 \
+    --save_strategy epoch \
+    --eval_strategy epoch \
+    --save_total_limit 8 \
     --logging_steps 5 \
     --max_length 4096 \
     --warmup_steps 100 \
@@ -90,7 +92,7 @@ swift sft \
     --freeze_llm false \
     --freeze_aligner false \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64" \
+    --output_dir "${SCRIPT_DIR}/outputs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition_txtw01" \
     --gradient_checkpointing true \
     --deepspeed zero2 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64.log"
+  2>&1 | tee "${SCRIPT_DIR}/logs/roadwork/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition_txtw01.log"
