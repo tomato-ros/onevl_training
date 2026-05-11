@@ -248,7 +248,7 @@ def main():
     parser.add_argument(
         "predict_jsonl",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/internvl_8B_sft/results/predict_full_6e.jsonl",
+        default="outputs/internvl_8B_sft/results/predict_full_6e.jsonl",
         nargs="?",
         help="Path to predict jsonl (e.g. predict_full_6e.jsonl)",
     )

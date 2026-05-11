@@ -170,202 +170,156 @@ source venv/onevl/bin/activate
 pip install -r requirements.txt
 ```
 
-Core packages (`requirements.txt`):
+Core packages (`requirements/framework.txt`):
 
 ```
-torch==2.10.0
-torchvision==0.25.0
-transformers==4.57.0
-safetensors==0.7.0
-Pillow>=10.0.0
-omegaconf>=2.3.0
-einops>=0.7.0
-numpy>=1.24.0
+transformers>=4.57.0,<5.4.0   # Qwen3VLForConditionalGeneration requires ≥4.57.0
+trl>=0.15,<0.29
+peft>=0.11,<0.19
+deepspeed<0.19
+qwen_vl_utils
+timm
+datasets>=3.0,<4.0
+safetensors
+einops
+omegaconf
+numpy
+pillow
 ```
 
-> **Note:** `transformers ≥ 4.57.0` is required for `Qwen3VLForConditionalGeneration` support.
+Install ms-swift separately (see [Training → Quick Start](#quick-start)):
+```bash
+pip install git+https://github.com/modelscope/ms-swift.git#egg=ms-swift[all]
+```
+
+> **Flash-Attention:** Install the wheel matching your CUDA/PyTorch version from the [flash-attention releases page](https://github.com/Dao-AILab/flash-attention/releases).
 
 ---
 
-## Inference
+## Training
 
-### Quick Start (Single GPU)
+### Quick Start
 
-```bash
-source venv/onevl/bin/activate
+Training OneVL follows a **3-stage pipeline** on top of [ms-swift](https://github.com/modelscope/ms-swift). All scripts auto-detect the number of GPUs and support multi-node via `NNODES` / `NODE_RANK` / `MASTER_ADDR` environment variables.
 
-# Trajectory prediction only (fastest, prefill inference)
-python infer_onevl.py \
-    --model_path /path/to/OneVL-checkpoint \
-    --test_set_path test_data/navsim_test.json \
-    --image_base_path ""
-    --output_path output/navsim/results.json \
-    --device cuda:0 \
-    --num_latent 2 --num_latent_vis 4 \
-    --max_new_tokens 1024 --answer_prefix "[" --prefix_k 0
+#### Prerequisites
 
-# With language explanation (text CoT from language aux decoder)
-python infer_onevl.py \
-    --model_path /path/to/OneVL-checkpoint \
-    --test_set_path test_data/navsim_test.json \
-    --image_base_path ""
-    --output_path output/navsim/results_explain.json \
-    --device cuda:0 \
-    --num_latent 2 --num_latent_vis 4 \
-    --max_new_tokens 1024 --answer_prefix "[" --prefix_k 0 \
-    --decoder_explain --aux_visual_condition \
-    --c_thought 2 --max_explain_tokens 1024
-
-# With both language + visual explanation (text CoT + future frame tokens)
-python infer_onevl.py \
-    --model_path /path/to/OneVL-checkpoint \
-    --test_set_path test_data/navsim_test.json \
-    --image_base_path "" \
-    --output_path output/navsim/results_explain.json \
-    --device cuda:0 \
-    --num_latent 2 --num_latent_vis 4 \
-    --max_new_tokens 1024 --answer_prefix "[" --prefix_k 0 \
-    --decoder_explain --aux_visual_condition \
-    --c_thought 2 --max_explain_tokens 1024 \
-    --visual_decoder_explain --visual_aux_visual_condition \
-    --c_thought_visual 4 --max_visual_tokens 2560
-```
-
-### Multi-GPU Inference (recommended for full test sets)
+1. **Install ms-swift** (and its dependencies):
 
 ```bash
-export MODEL_PATH=/path/to/OneVL-checkpoint
-export TEST_SET_PATH=test_data/navsim_test.json
-export OUTPUT_PATH=output/navsim/navsim_results.json
-
-bash run_infer.sh
+pip install -e .
+# Install flash-attn matching your CUDA version from:
+# https://github.com/Dao-AILab/flash-attention/releases
 ```
 
-The launcher auto-detects available GPUs, shards the test set, runs inference in parallel across all GPUs, and merges results.
+2. **Download model weights** (base VLM + visual aux decoder):
 
-### Per-Benchmark Scripts
+| Model | HuggingFace |
+|-------|-------------|
+| Qwen3-VL-4B-Instruct | [Qwen/Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) |
+| OneVL model weights | [xiaomi-research/onevl-models](https://huggingface.co/collections/xiaomi-research/onevl-models/) |
 
-```bash
-bash scripts/infer_navsim.sh       # NAVSIM
-bash scripts/infer_ar1.sh          # APR1 (trajectory only)
-bash scripts/infer_roadwork.sh     # ROADWork
-bash scripts/infer_impromptu.sh    # Impromptu
-```
-
-### For visual cot/text cot explain
-```bash
-bash scripts/infer_ar1_explain.sh  # APR1 (language + visual explanations, use APR1 as example)
-```
-
-### Evaluation
-
-AR1, Impromptu, and ROADWork can be evaluated directly with the bundled evaluation script:
-
-```bash
-# AR1
-python eval_results.py ar1 \
-    --results_json output/ar1/ar1_results.json \
-    --test_jsonl test_data/ar1_test.jsonl
-
-# Impromptu
-python eval_results.py impromptu \
-    --results_json output/impromptu/impromptu_results.json \
-    --test_jsonl test_data/impromptu_test.jsonl
-
-# ROADWork
-python eval_results.py roadwork \
-    --json_path output/roadwork/roadwork_results.json
-```
-
-NAVSIM uses the official NAVSIM evaluation pipeline. First convert OneVL inference results to the NAVSIM test format, then evaluate the converted file with the [NAVSIM](https://github.com/autonomousvision/navsim) codebase:
-
-```bash
-python output/navsim/convert_to_eval.py \
-    --input_path output/navsim/navsim_results.json \
-    --ref_path output/navsim/navsim_results_eval.json \
-    --output_path output/navsim/navsim_results_for_eval.json
-```
-
+3. **Prepare demo data**: 100-sample demo datasets are provided under `demo_data/navsim/` for quick verification.
 
 ---
 
-## Visualizing Future-Frame Predictions
+#### Stage 0 — Warm-up SFT
 
-After running inference with `--visual_decoder_explain`, the output JSON contains `visual_decoder_explain` fields encoding predicted future-frame visual tokens. Use the visualization script to decode them back to images:
+Standard supervised fine-tuning on answer-only or CoT data. Uses the vanilla `qwen3_vl` model type (no latent tokens yet).
 
 ```bash
-source venv/onevl/bin/activate
 
-python scripts/visualize_predict_image_tokens.py \
-    --predict_json output/ar1_explain/ar1_results_explain.json \
-    --out_dir output/ar1_explain_visualize \
-    --model_root /path/to/emu35_model_root \
-    -n 20 \
-    --device cuda:0
+bash run_script/train/navsim/sft_distributed_stage0_vis4_txt2_bs64.sh
+
+# Or CoT baseline:
+bash run_script/train/navsim/sft_distributed_qwen3vl_cot_64.sh
+# Or answer-only baseline:
+bash run_script/train/navsim/sft_distributed_qwen3vl_answer_bs64.sh
 ```
 
-**Output layout per sample:**
-
+Key config in the script:
+```bash
+MODEL_PATH="<path/to/Qwen3-VL-4B-Instruct>"
+DATASET_PATH="demo_data/navsim/navsim_answer_demo100.jsonl"  # replace with full dataset
+# --model_type qwen3_vl   (standard SFT, no latent CoT)
+# --deepspeed zero2
 ```
-output/ar1_explain_visualize/
-└── sample_0000/
-    ├── input_00.jpg                  # original camera frame(s)
-    ├── input_01.jpg
-    ├── ...
-    ├── decoded_from_tokens_00.png    # predicted future frame at t+0.5s
-    ├── decoded_from_tokens_01.png    # predicted future frame at t+1.0s
-    └── meta.json                     # CoT text + metadata
-```
-
-The script uses the self-contained `vq_decoder/` module (bundled Emu3.5 IBQ VQ-VAE) — no external Emu3.5 repo dependency required.
-
-`--model_root` must contain `Emu3.5-VisionTokenizer/config.yaml` and `Emu3.5-VisionTokenizer/model.ckpt`. Download from [BAAI/Emu3.5-VisionTokenizer](https://huggingface.co/BAAI/Emu3.5-VisionTokenizer).
 
 ---
 
-## Test Data Format
+#### Stage 1 — Train Auxiliary Decoders (main model frozen)
 
-### JSON array (NAVSIM, ROADWork)
+Initialize the latent CoT structure. The main LLM is **frozen**; only the language and visual auxiliary decoders are trained.
 
-```json
-[
-  {
-    "messages": [{"role": "user", "content": "<image>Based on the current image, predict ..."}],
-    "images": ["path/to/frame.jpg"],
-    "GT": "[[1.0, 0.0], [2.5, 0.1], ...]"
-  }
-]
+```bash
+bash run_script/train/navsim/sft_distributed_stage1_vis4_txt2_bs64.sh
 ```
 
-### JSONL (APR1, Impromptu)
+Key config to set before running:
+```bash
+MODEL_PATH="<path/to/stage0-checkpoint>"           # output from Stage 0
+VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"  # pre-trained visual aux decoder
 
-One JSON object per line, same schema as above.
+# Latent token counts: 4 visual + 2 language
+export LATENT_COT_C_THOUGHT_VISUAL=4
+export LATENT_COT_C_THOUGHT=2
+
+# Freeze main model, train aux decoders only
+export LATENT_COT_FREEZE_MAIN_MODEL=true
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
+export LATENT_COT_FREEZE_AUX_DECODER=false
+```
 
 ---
 
-**Environment variables** accepted by all scripts:
+#### Stage 2 — End-to-End Fine-tuning
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MODEL_PATH` | *(required)* | Path to the OneVL checkpoint |
-| `TEST_SET_PATH` | *(required)* | Test JSON / JSONL file |
-| `OUTPUT_PATH` | `<MODEL_PATH>/infer_results/onevl_merged.json` | Where to write merged results |
-| `IMAGE_BASE_PATH` | `""` | Prepended to relative image paths |
-| `NUM_LATENT` | `2` | Number of language latent tokens |
-| `NUM_LATENT_VIS` | `4` | Number of visual latent tokens |
-| `MAX_NEW_TOKENS` | `1024` | Max answer tokens to generate |
-| `ANSWER_PREFIX` | `""` | Prefix after `<answer>` (e.g. `[` for NAVSIM, `[[` for APR1) |
-| `PREFIX_K` | `0` |  Prefill first K GT waypoints after `<answer>` (default: 0), only used on ROADWork |
-| `DECODER_EXPLAIN` | `false` | Enable language auxiliary decoder |
-| `AUX_VISUAL_CONDITION` | `true` | *(if DECODER_EXPLAIN=true)* Condition language aux decoder on ViT features (`--aux_visual_condition`) |
-| `C_THOUGHT` | `2` | *(if DECODER_EXPLAIN=true)* Number of latent tokens read by language aux decoder |
-| `MAX_EXPLAIN_TOKENS` | `1024` | *(if DECODER_EXPLAIN=true)* Max tokens generated by language aux decoder |
-| `VISUAL_DECODER_EXPLAIN` | `false` | Enable visual auxiliary decoder |
-| `VISUAL_AUX_VISUAL_CONDITION` | `true` | *(if VISUAL_DECODER_EXPLAIN=true)* Condition visual aux decoder on ViT features (`--visual_aux_visual_condition`) |
-| `C_THOUGHT_VISUAL` | `4` | *(if VISUAL_DECODER_EXPLAIN=true)* Number of latent tokens read by visual aux decoder |
-| `MAX_VISUAL_TOKENS` | `2560` | *(if VISUAL_DECODER_EXPLAIN=true)* Max visual tokens generated by visual aux decoder |
+Unfreeze all components and jointly optimize the full model.
 
---- 
+```bash
+bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
+```
+
+Key config to set before running:
+```bash
+MODEL_PATH="<path/to/stage1-checkpoint>"           # output from Stage 1
+VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"
+
+# Unfreeze everything
+export LATENT_COT_FREEZE_MAIN_MODEL=false
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
+export LATENT_COT_FREEZE_AUX_DECODER=false
+# --deepspeed zero2
+# --num_train_epochs 5
+```
+
+---
+
+#### Multi-node Training
+
+All scripts read standard distributed env vars. To run on 2 nodes (8 GPUs each):
+
+```bash
+# Node 0 (master)
+NNODES=2 NODE_RANK=0 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
+
+# Node 1
+NNODES=2 NODE_RANK=1 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
+```
+
+> **Tip:** In cluster environments, the vars `WORKER_NUM`, `ROLE_INDEX`, `WORKER_0_HOST`, and `WORKER_0_PORT` are automatically picked up by the scripts, you should change this to fit your environment.
+
+---
+
+#### Training Summary
+
+| Stage | Script | Frozen | Trainable | DeepSpeed |
+|-------|--------|--------|-----------|-----------|
+| 0 — Warm-up SFT | `sft_distributed_qwen3vl_answer_bs64.sh` | — | Full model | ZeRO-2 |
+| 1 — Aux decoder init | `sft_distributed_stage1_vis4_txt2_bs64.sh` | Main LLM + ViT | Aux decoders | ZeRO-2 |
+| 2 — E2E fine-tuning | `sft_distributed_stage2_vis4_txt2_bs64.sh` | — | Full model | ZeRO-2 |
+
+---
 
 ## Citation
 

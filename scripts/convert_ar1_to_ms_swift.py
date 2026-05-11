@@ -123,7 +123,7 @@ def main():
     parser.add_argument(
         "--out-dir",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1",
+        default="data/ar1",
         help="输出目录",
     )
     parser.add_argument(

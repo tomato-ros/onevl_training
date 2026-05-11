@@ -5,17 +5,17 @@
 #
 # Single-node: ./infer_qwen3_vl_all_multinodes.sh   (same behavior as original script)
 #
-# Multi-node: use same env as train.sh (MLP_* from launcher).
-#   NNODES=${MLP_WORKER_NUM:-1}, NODE_RANK=${MLP_ROLE_INDEX:-0}
+# Multi-node: use same env as train.sh (* from launcher).
+#   NNODES=${WORKER_NUM:-1}, NODE_RANK=${ROLE_INDEX:-0}
 #   When NNODES>1, set RUN_ID to same value on all nodes if launcher does not set it.
 #   Assumes same number of GPUs per node.
 set -e
 
-PYTHON=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/python3
+PYTHON=projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256_bs64_notext/v0-20260323-132232/checkpoint-4842
-TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
+MODEL_PATH=outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256_bs64_notext/v0-20260323-132232/checkpoint-4842
+TEST_SET_PATH=projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
 
@@ -87,14 +87,14 @@ echo "  USE_SEPARATE_VIS_TOKENS: ${USE_SEPARATE_VISUAL_LATENT_TOKENS}"
 echo "  EXTRA_FLAGS:             ${EXTRA_FLAGS}"
 echo "======================================"
 
-# ---- Multi-node: same as train.sh (MLP_WORKER_NUM, MLP_ROLE_INDEX) ----
-NNODES=${MLP_WORKER_NUM:-1}
-NODE_RANK=${MLP_ROLE_INDEX:-0}
-MASTER_ADDR=${MLP_WORKER_0_HOST:-"127.0.0.1"}
-MASTER_PORT=${MLP_WORKER_0_PORT:-$(shuf -i 10000-50000 -n1)}
+# ---- Multi-node: same as train.sh (WORKER_NUM, ROLE_INDEX) ----
+NNODES=${WORKER_NUM:-1}
+NODE_RANK=${ROLE_INDEX:-0}
+MASTER_ADDR=${WORKER_0_HOST:-"127.0.0.1"}
+MASTER_PORT=${WORKER_0_PORT:-$(shuf -i 10000-50000 -n1)}
 
 OUTPUT_DIR=$(dirname "${OUTPUT_PATH}")
-RUN_ID=${RUN_ID:-${MLP_JOB_ID:-${SLURM_JOB_ID:-$$}}}
+RUN_ID=${RUN_ID:-${JOB_ID:-${SLURM_JOB_ID:-$$}}}
 
 if [ "${NNODES}" -gt 1 ] && [ "${RUN_ID}" = "$$" ]; then
     INFER_RUN_ID_FILE="${OUTPUT_DIR}/._infer_multinode_run_id"

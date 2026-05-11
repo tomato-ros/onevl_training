@@ -1,9 +1,9 @@
 #!/bin/bash
 # Multi-node inference: split data by nodes, each node runs swift infer on its split, rank 0 merges.
 # Single-node: NNODES=1 (default), one split = full data.
-# Multi-node: set MLP_WORKER_NUM, MLP_ROLE_INDEX (same as train launcher). RUN_ID synced via OUTPUT_DIR when launcher does not set it.
+# Multi-node: set WORKER_NUM, ROLE_INDEX (same as train launcher). RUN_ID synced via OUTPUT_DIR when launcher does not set it.
 # Requires shared filesystem: OUTPUT_DIR (result_path's dir) and VAL_DATASET must be visible to all nodes (e.g. NFS); otherwise some nodes will hang waiting for split_done.
-source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
+source projects/ms-swift/.venv/bin/activate
 rm -rf /root/.cache
 
 cd /e2e-data/evad-tech-vla/lujinghui/ms-swift
@@ -17,18 +17,18 @@ export PYTHONPATH="${MS_SWIFT_ROOT}:${PYTHONPATH:-}"
 
 # ---- Configuration ----
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}
-MODEL=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/internvl_8B_sft/v0-20260310-124057/checkpoint-3990
+MODEL=outputs/internvl_8B_sft/v0-20260310-124057/checkpoint-3990
 VAL_DATASET=/e2e-data/evad-tech-vla/lujinghui/lujinghui/datasets/navsim/dataset_navsim_test_traj1.jsonl
-RESULT_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/internvl_8B_sft/results/predict_full_6e.jsonl
+RESULT_PATH=outputs/internvl_8B_sft/results/predict_full_6e.jsonl
 # Canonical absolute path so all nodes use same SPLIT_DIR (required for shared storage)
 OUTPUT_DIR=$(cd "$(dirname "${RESULT_PATH}")" && pwd)
 SWIFT_INFER_EXTRA="--infer_backend pt --max_batch_size 8 --max_new_tokens 512 --temperature 0"
 
-# ---- Multi-node env (same as reference: MLP_* from launcher, RUN_ID sync when needed) ----
-NNODES=${MLP_WORKER_NUM:-1}
-NODE_RANK=${MLP_ROLE_INDEX:-0}
+# ---- Multi-node env (same as reference: * from launcher, RUN_ID sync when needed) ----
+NNODES=${WORKER_NUM:-1}
+NODE_RANK=${ROLE_INDEX:-0}
 # Same RUN_ID on all nodes for shared SPLIT_DIR. If launcher does not set it, rank 0 writes to shared OUTPUT_DIR and others read.
-RUN_ID=${RUN_ID:-${MLP_JOB_ID:-${SLURM_JOB_ID:-$$}}}
+RUN_ID=${RUN_ID:-${JOB_ID:-${SLURM_JOB_ID:-$$}}}
 INFER_RUN_ID_FILE="${OUTPUT_DIR}/._infer_multinode_run_id"
 
 if [ "${NNODES}" -gt 1 ] && [ "${RUN_ID}" = "$$" ]; then

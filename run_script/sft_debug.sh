@@ -1,5 +1,5 @@
 cd /e2e-data/evad-tech-vla/lujinghui/ms-swift && \
-source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate && \
+source projects/ms-swift/.venv/bin/activate && \
 export PYTHONPATH="$(pwd):${PYTHONPATH}" && \
 export PYTHONUNBUFFERED=1 && \
 export TF_CPP_MIN_LOG_LEVEL=3 && \

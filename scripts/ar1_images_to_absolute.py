@@ -23,7 +23,7 @@ def main():
     p.add_argument(
         "--dir",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/ar1",
+        default="data/ar1",
         help="ar1 jsonl 所在目录",
     )
     p.add_argument(

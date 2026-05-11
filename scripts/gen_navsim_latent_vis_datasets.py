@@ -68,7 +68,7 @@ def main():
         "input_jsonl",
         type=str,
         nargs="?",
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_latent_cot_100_latent_1.jsonl",
+        default="data/navsim_latent_cot_100_latent_1.jsonl",
         help="源 jsonl 路径（已有 <|start-latent|>...<|end-latent|><answer> 格式）",
     )
     parser.add_argument(

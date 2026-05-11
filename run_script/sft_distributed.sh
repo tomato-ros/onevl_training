@@ -15,7 +15,7 @@ set -x
 # ============================================================
 
 # ---------- Environment ----------
-source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
+source projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
@@ -24,10 +24,10 @@ export TF_CPP_MIN_LOG_LEVEL=3
 
 # ---------- Distributed settings ----------
 nproc_per_node=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
-NNODES=${MLP_WORKER_NUM:-1}
-NODE_RANK=${MLP_ROLE_INDEX:-0}
-MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
-MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
+NNODES=${WORKER_NUM:-1}
+NODE_RANK=${ROLE_INDEX:-0}
+MASTER_ADDR=${WORKER_0_HOST:-127.0.0.1}
+MASTER_PORT=${WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
 MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"

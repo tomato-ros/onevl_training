@@ -1,504 +1,354 @@
-# SWIFT (Scalable lightWeight Infrastructure for Fine-Tuning)
+<div align="center">
 
-<p align="center">
-    <br>
-    <img src="asset/banner.png"/>
-    <br>
-<p>
-<p align="center">
-<a href="https://modelscope.cn/home">魔搭社区官网</a>
-<br>
-        中文&nbsp ｜ &nbsp<a href="README.md">English</a>&nbsp
-</p>
+# <img src="assets/onevl_logo_new.png" alt="OneVL Logo" height="48" style="vertical-align:middle"/> OneVL: One-Step Latent Reasoning and Planning with Vision-Language Explanations
 
+[![Tech Report](https://img.shields.io/badge/Tech%20Report-arXiv-red?style=flat-square&logo=arxiv)](https://arxiv.org/abs/2604.18486/)
+[![Project Page](https://img.shields.io/badge/Project%20Page-blue?style=flat-square&logo=googlechrome)](https://xiaomi-embodied-intelligence.github.io/OneVL/)
+[![Model Weights](https://img.shields.io/badge/Model%20Weights-HuggingFace-yellow?style=flat-square&logo=huggingface)](https://huggingface.co/collections/xiaomi-research/onevl-models/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](LICENSE)
 
-<p align="center">
-<img src="https://img.shields.io/badge/python-3.11-5be.svg">
-<img src="https://img.shields.io/badge/pytorch-%E2%89%A52.0-orange.svg">
-<a href="https://github.com/modelscope/modelscope/"><img src="https://img.shields.io/badge/modelscope-%E2%89%A51.23-5D91D4.svg"></a>
-<a href="https://pypi.org/project/ms-swift/"><img src="https://badge.fury.io/py/ms-swift.svg"></a>
-<a href="https://github.com/modelscope/ms-swift/blob/main/LICENSE"><img src="https://img.shields.io/github/license/modelscope/ms-swift"></a>
-<a href="https://pepy.tech/project/ms-swift"><img src="https://pepy.tech/badge/ms-swift"></a>
-<a href="https://github.com/modelscope/ms-swift/pulls"><img src="https://img.shields.io/badge/PR-welcome-55EB99.svg"></a>
-</p>
+</div>
 
-<p align="center">
-<a href="https://trendshift.io/repositories/6427" target="_blank"><img src="https://trendshift.io/api/badge/repositories/6427" alt="modelscope%2Fswift | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</p>
+---
 
-<p align="center">
-        <a href="https://arxiv.org/abs/2408.05517">论文</a> &nbsp ｜ <a href="https://swift.readthedocs.io/en/latest/">English Documentation</a> &nbsp ｜ &nbsp <a href="https://swift.readthedocs.io/zh-cn/latest/">中文文档</a> &nbsp
-</p>
+## Overview
 
-##  📖 目录
-- [用户群](#-用户群)
-- [简介](#-简介)
-- [新闻](#-新闻)
-- [安装](#%EF%B8%8F-安装)
-- [快速开始](#-快速开始)
-- [如何使用](#-如何使用)
-- [License](#-license)
-- [引用](#-引用)
+**OneVL** is a Vision-Language-Action (VLA) framework for autonomous driving that achieves **state-of-the-art trajectory prediction accuracy** with **inference latency matching answer-only AR models**. It overcomes the fundamental limitations of prior latent Chain-of-Thought (CoT) methods by introducing dual-modal auxiliary decoders that supervise compact latent tokens to encode both linguistic reasoning and future scene dynamics.
 
-## ☎ 用户群
+### Three CoT Paradigms
 
-请扫描下面的二维码来加入我们的交流群：
+<div align="center">
+<img src="assets/comparison.png" alt="Comparison of three CoT paradigms" width="90%"/>
+</div>
 
-[Discord Group](https://discord.com/invite/D27yfEFVz5)              |  微信群
-:-------------------------:|:-------------------------:
-<img src="asset/discord_qr.jpg" width="200" height="200">  |  <img src="asset/wechat.png" width="200" height="200">
+> **(a) Explicit CoT** generates a full reasoning chain before the answer — interpretable but slow. **(b) Implicit CoT** compresses reasoning into opaque latent vectors — fast but not interpretable. **(c) OneVL (ours)** uses visual latent tokens `v` and language latent tokens `l`; during training, dual auxiliary decoders decode these into future frames and CoT text respectively. At inference, decoders are discarded and latents are **prefilled** into the prompt — matching the speed of (b) while recovering the interpretability of (a) in both vision and language.
 
-## 📝 简介
-🍲 **ms-swift**是魔搭社区提供的大模型与多模态大模型微调部署框架，现已支持600+纯文本大模型与400+多模态大模型的训练（预训练、微调、人类对齐）、推理、评测、量化与部署。其中大模型包括：Qwen3、Qwen3.5、InternLM3、GLM4.5、Mistral、DeepSeek-R1、Llama4等模型，多模态大模型包括：Qwen3-VL、Qwen3-Omni、Llava、InternVL3.5、MiniCPM-V-4、Ovis2.5、GLM4.5-V、DeepSeek-VL2等模型。
+### Architecture
 
-🍔 除此之外，ms-swift汇集了最新的训练技术，包括集成Megatron并行技术，包括TP、PP、CP、EP等为训练提供加速，以及众多GRPO算法族强化学习的算法，包括：GRPO、DAPO、GSPO、SAPO、CISPO、RLOO、Reinforce++等提升模型智能。ms-swift支持广泛的训练任务，包括DPO、KTO、RM、CPO、SimPO、ORPO等偏好学习算法，以及Embedding、Reranker、序列分类任务。ms-swift提供了大模型训练全链路的支持，包括使用vLLM、SGLang和LMDeploy对推理、评测、部署模块提供加速，以及使用GPTQ、AWQ、BNB、FP8技术对大模型进行量化。
+<div align="center">
+<img src="assets/framework.png" alt="OneVL architecture" width="90%"/>
+</div>
 
-**为什么选择ms-swift？**
-- 🍎 **模型类型**：支持**600+纯文本大模型**、**400+多模态大模型**以及All-to-All全模态模型训练到部署全流程，热门模型Day0支持。
-- **数据集类型**：内置150+预训练、微调、人类对齐、多模态等各种任务数据集，并支持自定义数据集，用户只需准备数据集即可一键训练。
-- **硬件支持**：支持A10/A100/H100、RTX系列、T4/V100、CPU、MPS以及国产硬件Ascend NPU等。
-- **轻量训练**：支持了LoRA、QLoRA、DoRA、LoRA+、LLaMAPro、LongLoRA、LoRA-GA、ReFT、RS-LoRA、Adapter、LISA等轻量微调方式。
-- **量化训练**：支持对BNB、AWQ、GPTQ、AQLM、HQQ、EETQ量化模型进行训练，7B模型训练只需9GB训练资源。
-- **显存优化**: GaLore、Q-Galore、UnSloth、Liger-Kernel、Flash-Attention 2/3 以及 **Ulysses和Ring-Attention序列并行技术**支持，降低长文本训练显存占用。
-- **分布式训练**：支持分布式数据并行（DDP）、device_map简易模型并行、DeepSpeed ZeRO2 ZeRO3、FSDP/FSDP2以及Megatron等分布式训练技术。
-- 🍓 **多模态训练**：支持多模态packing技术提升训练速度100%+，支持文本、图像、视频和语音混合模态数据训练，支持vit/aligner/llm单独控制。
-- **Agent训练**：支持Agent template，准备一套数据集可用于不同模型的训练。
-- 🍊 **训练任务**：支持预训练和指令微调，以及DPO、GKD、KTO、RM、CPO、SimPO、ORPO等训练任务，支持**Embedding/Reranker**和序列分类任务。
-- 🥥 **Megatron并行技术**：提供TP/PP/SP/CP/ETP/EP/VPP并行策略，显著提升**MoE模型训练速度**。支持300+纯文本大模型和100+多模态大模型的全参数和LoRA训练方法。支持CPT/SFT/GRPO/DPO/KTO/RM训练任务。
-- 🍉 **强化学习**：内置**丰富GRPO族算法**，包括GRPO、DAPO、GSPO、SAPO、CISPO、CHORD、RLOO、Reinforce++等，支持同步和异步vLLM引擎推理加速，可使用插件拓展奖励函数、多轮推理调度器以及环境等。
-- **全链路能力**：覆盖训练、推理、评测、量化和部署全流程。
-- **界面训练**：提供使用Web-UI界面的方式进行训练、推理、评测、量化，完成大模型的全链路。
-- **推理加速**：支持Transformers、vLLM、SGLang和LmDeploy推理加速引擎，并提供OpenAI接口，为推理、部署和评测模块提供加速。
-- **模型评测**：以EvalScope作为评测后端，支持100+评测数据集对纯文本和多模态模型进行评测。
-- **模型量化**：支持AWQ、GPTQ、FP8和BNB的量化导出，导出的模型支持使用vLLM/SGLang/LmDeploy推理加速。
+> During training, hidden states at visual latent positions are routed to the **Visual Aux. Decoder** (predicts future-frame visual tokens at t+0.5s and t+1.0s) and at language latent positions to the **Language Aux. Decoder** (reconstructs CoT text). Both decoders are discarded at inference; all latent tokens are **prefilled** into the prompt, matching answer-only AR prediction latency.
 
-## 🎉 新闻
-- 🎁 2026.03.03: **ms-swift v4.0**大版本正式发布，release note参考[这里](https://github.com/modelscope/ms-swift/releases/tag/v4.0.0)，您的建议可以在[这个issue](https://github.com/modelscope/ms-swift/issues/7250)中反馈给我们，感谢您的支持。
-- 🎁 2025.11.14: Megatron GRPO现已支持！查看[文档](./docs/source/Megatron-SWIFT/GRPO.md)和[示例](examples/megatron/grpo)。
-- 🎁 2025.11.04: 支持[Mcore-Bridge](docs/source/Megatron-SWIFT/Mcore-Bridge.md)，使Megatron训练像transformers一样简单易用。
-- 🎁 2025.10.28: Ray [已支持](docs/source/Instruction/Ray.md)。
-- 🎁 2025.09.07: 支持CHORD训练算法，请查看[文档](docs/source/Instruction/GRPO/AdvancedResearch/CHORD.md)。
-- 🎁 2025.09.06: Ulysses现已支持与ring-attention结合使用，使得输入序列可以被切分成任意数量的块（不再受限于num_heads），命令参数仍然是`--sequence_parallel_size N`。
-- 🎁 2025.09.02: Megatron-SWIFT支持多模态模型训练。文档参考[这里](./docs/source/Megatron-SWIFT/Mcore-Bridge.md)。
-- 🎁 2025.08.12: 支持在SFT训练中使用[Dynamic Fine-Tuning](https://arxiv.org/abs/2508.05629)(DFT)，使用参数 `--enable_dft_loss true`。训练脚本参考[这里](https://github.com/modelscope/ms-swift/blob/main/examples/train/full/dft.sh)
-- 🎁 2025.07.09: Megatron-SWIFT支持LoRA训练。相比ms-swift，在MoE模型提速显著。训练脚本参考[这里](https://github.com/modelscope/ms-swift/blob/main/examples/megatron/lora)。
-- 🎁 2025.06.23: 支持Reranker模型训练，训练脚本参考[这里](https://github.com/modelscope/ms-swift/blob/main/examples/train/reranker/train_reranker.sh)。
-- 🎁 2025.06.15: 支持对纯文本大模型和多模态模型进行GKD训练。训练脚本参考这里：[纯文本](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/gkd), [多模态](https://github.com/modelscope/ms-swift/blob/main/examples/train/multimodal/rlhf/gkd)。
+OneVL augments **Qwen3-VL-4B-Instruct** with:
 
-<details><summary>更多</summary>
+- **Latent Token Interface** — 4 visual latent tokens + 2 language latent tokens placed in the assistant response before the answer, using existing vocabulary tokens (no new special tokens).
+- **Visual Auxiliary Decoder** — Predicts future-frame visual tokens at t+0.5s and t+1.0s from visual latent hidden states (Emu3.5 IBQ, 131k codebook), acting as a **world model** supervision signal.
+- **Language Auxiliary Decoder** — Reconstructs explicit CoT reasoning text from language latent hidden states, conditioned on ViT visual features.
+- **Prefill Inference** — Both decoders are discarded at inference; latent tokens are processed in one parallel pass with only the trajectory generated autoregressively.
 
-- 🎁 2025.06.11: 支持使用Megatron并行技术进行RLHF训练，训练脚本参考[这里](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/rlhf)。
-- 🎁 2025.05.29: 支持pt、sft、dpo、grpo的序列并行，具体请查看[脚本](https://github.com/modelscope/ms-swift/tree/main/examples/train/sequence_parallel)。
-- 🎁 2025.05.11: GRPO中的奖励模型支持自定义处理逻辑，GenRM的例子参考[这里](./docs/source/Instruction/GRPO/DeveloperGuide/reward_model.md)。
-- 🎁 2025.04.15: ms-swift论文已经被AAAI 2025接收，论文地址在[这里](https://ojs.aaai.org/index.php/AAAI/article/view/35383)。
-- 🎁 2025.03.23: 支持了多轮GRPO，用于构建多轮对话场景的训练(例如agent tool calling)，请查看[文档](docs/source/Instruction/GRPO/DeveloperGuide/multi_turn.md)。
-- 🎁 2025.03.16: 支持了Megatron的并行技术进行训练，请查看[Megatron-SWIFT训练文档](https://swift.readthedocs.io/zh-cn/latest/Megatron-SWIFT/Quick-start.html)。
-- 🎁 2025.03.15: 支持纯文本和多模态模型的embedding模型的微调，请查看[训练脚本](examples/train/embedding)。
-- 🎁 2025.03.05: 支持GRPO的hybrid模式，4GPU(4*80G)训练72B模型的脚本参考[这里](examples/train/grpo/internal/vllm_72b_4gpu.sh)。同时支持vllm的tensor并行，训练脚本参考[这里](examples/train/grpo/internal)。
-- 🎁 2025.02.21: GRPO算法支持使用LMDeploy，训练脚本参考[这里](examples/train/grpo/internal/full_lmdeploy.sh)。此外测试了GRPO算法的性能，使用一些tricks使训练速度提高到300%。WanDB表格请查看[这里](https://wandb.ai/tastelikefeet/grpo_perf_test?nw=nwuseryuzezyz)。
-- 🎁 2025.02.21: 支持`swift sample`命令。强化微调脚本参考[这里](docs/source/Instruction/Reinforced-Fine-tuning.md)，大模型API蒸馏采样脚本参考[这里](examples/sampler/distill/distill.sh)。
-- 🔥 2025.02.12: 支持GRPO (Group Relative Policy Optimization) 训练算法，文档参考[这里](docs/source/Instruction/GRPO/GetStarted/GRPO.md)。
-- 🎁 2024.12.04: **ms-swift3.0**大版本更新。请查看[发布说明和更改](docs/source/Instruction/ReleaseNote3.0.md)。
-- 🎉 2024.08.12: ms-swift论文已经发布到arXiv上，可以点击[这里](https://arxiv.org/abs/2408.05517)阅读。
-- 🔥 2024.08.05: 支持使用[evalscope](https://github.com/modelscope/evalscope/)作为后端进行大模型和多模态模型的评测。
-- 🔥 2024.07.29: 支持使用[vllm](https://github.com/vllm-project/vllm), [lmdeploy](https://github.com/InternLM/lmdeploy)对大模型和多模态大模型进行推理加速，在infer/deploy/eval时额外指定`--infer_backend vllm/lmdeploy`即可。
-- 🔥 2024.07.24: 支持对多模态大模型进行人类偏好对齐训练，包括DPO/ORPO/SimPO/CPO/KTO/RM/PPO。
-- 🔥 2024.02.01: 支持Agent训练！训练算法源自这篇[论文](https://arxiv.org/pdf/2309.00986.pdf)。
-</details>
+### Key Innovations
 
-## 🛠️ 安装
-使用pip进行安装：
-```shell
-pip install ms-swift -U
+- **Dual-Modal Auxiliary Decoders**: A *language auxiliary decoder* reconstructs human-readable CoT reasoning from language latent tokens; a *visual auxiliary decoder* predicts future scene frames from visual latent tokens, acting as a **world model** that grounds the latents in physical scene dynamics.
+- **Prefill Inference**: All latent tokens are prefilled into the prompt context in a single parallel pass — **1.5× faster than explicit CoT on NAVSIM, 2.3× faster on ROADWork** — with latency essentially identical to answer-only AR prediction.
+- **Compression Drives Generalization**: OneVL is the **only latent CoT method that outperforms explicit autoregressive CoT** across all four benchmarks.
 
-# 使用uv
-pip install uv
-uv pip install ms-swift -U --torch-backend=auto
+---
+
+## Open-Source Status
+
+| Component | Status |
+|-----------|--------|
+| 📄 Technical Report | ✅ Release |
+| ⚖️ Model Weights | ✅ Release |
+| 🔍 Inference Code | ✅ Release |
+| 🏋️ Training Code | 🔜 Coming Soon |
+
+---
+
+## Results
+
+### Accuracy–Efficiency Pareto (NAVSIM & ROADWork)
+
+<div align="center">
+<img src="assets/teaser_bar.png" alt="Teaser: Accuracy-Efficiency Pareto across benchmarks" width="90%"/>
+</div>
+
+> OneVL lands in the **green-shaded optimal corner** (lowest latency, best metric) on both benchmarks. All prior latent CoT methods (COCONUT, CODI, SIM-CoT) underperform even the AR Answer baseline on driving tasks — a critical failure that OneVL overcomes.
+
+### NAVSIM — Full Comparison
+
+| Method | Model Size | PDM-score ↑ | Latency (s) ↓ | Interpretability |
+|--------|:----------:|:-----------:|:-------------:|:----------------:|
+| AdaThinkDrive | 8B | 86.20 | — | Language |
+| LaST-VLA | 8B | 87.30 | — | — |
+| AR Answer | 4B | 87.47 | <u>4.49</u> | — |
+| AR CoT+Answer | 4B | <u>88.29</u> | 6.58 | Language |
+| COCONUT | 4B | 84.84 | 5.93 | — |
+| CODI | 4B | 83.92 | 8.62 | — |
+| SIM-CoT | 4B | 84.21 | 10.86 | Language |
+| **OneVL** | **4B** | **88.84** | **4.46** | **Vision + Language** |
+
+### ROADWork — Full Comparison
+
+| Method | ADE (px) ↓ | FDE (px) ↓ | Latency (s) ↓ | Interpretability |
+|--------|:----------:|:----------:|:-------------:|:----------------:|
+| YNet | 22.68 | 80.78 | — | — |
+| AR Answer | 15.98 | 40.29 | <u>4.74</u> | — |
+| AR CoT+Answer | <u>13.18</u> | <u>29.98</u> | 10.74 | Language |
+| COCONUT | 15.44 | 38.60 | 6.06 | — |
+| CODI | 16.45 | 44.28 | 6.73 | — |
+| SIM-CoT | 16.49 | 44.32 | 6.19 | Language |
+| **OneVL** | **12.49** | **28.80** | **4.71** | **Vision + Language** |
+
+### Impromptu — Full Comparison
+
+| Method | ADE (m) ↓ | FDE (m) ↓ | Latency (s) ↓ | Interpretability |
+|--------|:---------:|:---------:|:-------------:|:----------------:|
+| Impromptu VLA | 1.60 | 4.28 | 6.10 | — |
+| AR Answer | 1.46 | 4.03 | <u>4.24</u> | — |
+| AR CoT+Answer | <u>1.42</u> | <u>3.96</u> | 6.84 | Language |
+| COCONUT | 1.49 | 4.07 | 5.27 | — |
+| CODI | 1.86 | 5.18 | 5.24 | — |
+| SIM-CoT | 2.43 | 6.10 | 5.09 | Language |
+| **OneVL** | **1.34** | **3.70** | **4.02** | **Vision + Language** |
+
+### APR1 — Full Comparison
+
+| Method | ADE (m) ↓ | FDE (m) ↓ | Latency (s) ↓ | Interpretability |
+|--------|:---------:|:---------:|:-------------:|:----------------:|
+| Cosmos-Reason | <u>2.86</u> | **7.42** | — | Language |
+| AR Answer | 3.27 | 9.59 | 3.06 | — |
+| AR CoT+Answer | 2.99 | 8.54 | 3.51 | Language |
+| COCONUT | 3.29 | 9.48 | 3.76 | — |
+| CODI | 3.22 | 9.25 | 3.85 | — |
+| SIM-CoT | 3.40 | 9.85 | 3.78 | Language |
+| **OneVL** | **2.62** | <u>7.53</u> | **3.26** | **Vision + Language** |
+
+### Text CoT Quality (NAVSIM)
+
+| Method | Meta Action Acc. ↑ | STS Score ↑ | LLM Judge ↑ | Avg. ↑ | Latency (s) ↓ |
+|--------|:-----------------:|:-----------:|:-----------:|:------:|:------:|
+| AR CoT+Answer | 73.20 | 79.75 | 81.86 | **78.27** | <u>6.58</u> |
+| SIM-CoT | 67.20 | 76.25 | 78.73 | 74.06 | 10.86 |
+| **OneVL** (lang. aux.) | 71.00 | 78.26 | 79.13 | <u>76.13</u> | **4.46** |
+
+OneVL's language auxiliary decoder recovers 97% of explicit CoT quality while running at answer-only speed.
+
+### Ablation Study (NAVSIM PDM-score)
+
+| Model Variant | Lang. Aux. Dec. | Vis. Aux. Dec. | Staged Train | PDM-score ↑ |
+|---------------|:---------------:|:--------------:|:------------:|:-----------:|
+| OneVL w/o vis. dec. | ✓ | — | ✓ | 87.97 |
+| OneVL w/o lang. dec. | — | ✓ | ✓ | 88.53 |
+| OneVL w/o staged train | ✓ | ✓ | — | 67.13 |
+| **OneVL (full)** | **✓** | **✓** | **✓** | **88.84** |
+
+Both auxiliary decoders contribute measurably; staged training is essential (without it, performance collapses to 67.13).
+
+---
+
+## Qualitative Examples
+
+### NAVSIM
+
+<div align="center">
+<img src="assets/navsim_example1.png" alt="NAVSIM qualitative example" width="95%"/>
+</div>
+
+> Each plot overlays ground-truth (green) and predicted (red) trajectories on the front camera view, along with predicted future frames at t+0.5s and t+1.0s decoded from the visual auxiliary decoder, and the language CoT from the language auxiliary decoder.
+
+### ROADWork (Construction Zone Navigation)
+
+<div align="center">
+<img src="assets/roadwork_example1.png" alt="ROADWork qualitative example" width="95%"/>
+</div>
+
+---
+
+## Environment Setup
+
+**Requirements:** Python 3.10+, CUDA GPU (≥16 GB VRAM recommended for inference with aux decoders).
+
+```bash
+# 1. Create and activate virtual environment
+uv venv venv/onevl --python 3.12
+source venv/onevl/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
 ```
 
-从源代码安装：
-```shell
-# pip install git+https://github.com/modelscope/ms-swift.git
+Core packages (`requirements/framework.txt`):
 
-git clone https://github.com/modelscope/ms-swift.git
-cd ms-swift
-# main分支为swift4.x。若安装swift3.x，请运行以下命令
-# git checkout release/3.12
-pip install -e .
-
-# 使用uv
-uv pip install -e . --torch-backend=auto
+```
+transformers>=4.57.0,<5.4.0   # Qwen3VLForConditionalGeneration requires ≥4.57.0
+trl>=0.15,<0.29
+peft>=0.11,<0.19
+deepspeed<0.19
+qwen_vl_utils
+timm
+datasets>=3.0,<4.0
+safetensors
+einops
+omegaconf
+numpy
+pillow
 ```
 
-运行环境：
-
-|              | 范围           | 推荐                  | 备注                 |
-|--------------|--------------|---------------------|--------------------|
-| python       | >=3.9        | 3.11/3.12            |                    |
-| cuda         |              | cuda12              | 使用cpu、npu、mps则无需安装 |
-| torch        | >=2.0        | 2.8.0/2.10.0         |  torch2.9 [conv3d 缓慢](https://swift.readthedocs.io/zh-cn/latest/BestPractices/Qwen3-VL-Best-Practice.html#id1)   |
-| transformers | >=4.33       | 4.57.6/5.2.0        |                    |
-| modelscope   | >=1.23       |                     |                    |
-| peft         | >=0.11,<0.19 |                     |                    |
-| flash_attn   |              | 2.8.3/3.0.0b1 |                    |
-| trl          | >=0.15,<0.29 | 0.28.0              | RLHF               |
-| deepspeed    | >=0.14       | 0.18.7              | 训练                 |
-| vllm         | >=0.5.1      | 0.11.0/0.17.0        | 推理/部署              |
-| sglang       | >=0.4.6      |          | 推理/部署              |
-| lmdeploy     | >=0.5   | 0.10.1                 | 推理/部署              |
-| evalscope    | >=1.0       |                     | 评测                 |
-| gradio       |              | 5.32.1              | Web-UI/App         |
-
-更多可选依赖可以参考[这里](https://github.com/modelscope/ms-swift/blob/main/requirements/install_all.sh)。
-
-
-## 🚀 快速开始
-
-**10分钟**在单卡3090上对Qwen3-4B-Instruct-2507进行自我认知微调：
-
-### 命令行（推荐）
-```shell
-# 13GB
-CUDA_VISIBLE_DEVICES=0 \
-swift sft \
-    --model Qwen/Qwen3-4B-Instruct-2507 \
-    --tuner_type lora \
-    --dataset 'AI-ModelScope/alpaca-gpt4-data-zh#500' \
-              'AI-ModelScope/alpaca-gpt4-data-en#500' \
-              'swift/self-cognition#500' \
-    --torch_dtype bfloat16 \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
-    --learning_rate 1e-4 \
-    --lora_rank 8 \
-    --lora_alpha 32 \
-    --target_modules all-linear \
-    --gradient_accumulation_steps 16 \
-    --eval_steps 50 \
-    --save_steps 50 \
-    --save_total_limit 2 \
-    --logging_steps 5 \
-    --max_length 2048 \
-    --output_dir output \
-    --warmup_ratio 0.05 \
-    --dataloader_num_workers 4 \
-    --model_author swift \
-    --model_name swift-robot
+Install ms-swift separately (see [Training → Quick Start](#quick-start)):
+```bash
+pip install git+https://github.com/modelscope/ms-swift.git#egg=ms-swift[all]
 ```
 
-小贴士：
-- 如果要使用自定义数据集进行训练，你可以参考[这里](https://swift.readthedocs.io/zh-cn/latest/Customization/Custom-dataset.html)组织数据集格式，并指定`--dataset <dataset_path>`。
-- `--model_author`和`--model_name`参数只有当数据集中包含`swift/self-cognition`时才生效。
-- 如果要使用其他模型进行训练，你只需要修改`--model <model_id/model_path>`即可。
-- 默认使用**ModelScope**进行模型和数据集的下载。如果要使用HuggingFace，指定`--use_hf true`即可。
+> **Flash-Attention:** Install the wheel matching your CUDA/PyTorch version from the [flash-attention releases page](https://github.com/Dao-AILab/flash-attention/releases).
 
-训练完成后，使用以下命令对训练后的权重进行推理：
-- 这里的`--adapters`需要替换成训练生成的last checkpoint文件夹。由于adapters文件夹中包含了训练的参数文件`args.json`，因此不需要额外指定`--model`，`--system`，swift会自动读取这些参数。如果要关闭此行为，可以设置`--load_args false`。
+---
 
-```shell
-# 使用交互式命令行进行推理
-CUDA_VISIBLE_DEVICES=0 \
-swift infer \
-    --adapters output/vx-xxx/checkpoint-xxx \
-    --stream true \
-    --temperature 0 \
-    --max_new_tokens 2048
+## Training
 
-# merge-lora并使用vLLM进行推理加速
-CUDA_VISIBLE_DEVICES=0 \
-swift infer \
-    --adapters output/vx-xxx/checkpoint-xxx \
-    --stream true \
-    --merge_lora true \
-    --infer_backend vllm \
-    --vllm_max_model_len 8192 \
-    --temperature 0 \
-    --max_new_tokens 2048
+### Quick Start
+
+Training OneVL follows a **3-stage pipeline** on top of [ms-swift](https://github.com/modelscope/ms-swift). All scripts auto-detect the number of GPUs and support multi-node via `NNODES` / `NODE_RANK` / `MASTER_ADDR` environment variables.
+
+#### Prerequisites
+
+1. **Install ms-swift** (and its dependencies):
+
+```bash
+pip install git+https://github.com/modelscope/ms-swift.git#egg=ms-swift[all]
+pip install "deepspeed<0.19" qwen_vl_utils timm
+# Install flash-attn matching your CUDA version from:
+# https://github.com/Dao-AILab/flash-attention/releases
 ```
 
-最后，使用以下命令将模型推送到ModelScope：
-```shell
-CUDA_VISIBLE_DEVICES=0 \
-swift export \
-    --adapters output/vx-xxx/checkpoint-xxx \
-    --push_to_hub true \
-    --hub_model_id '<your-model-id>' \
-    --hub_token '<your-sdk-token>' \
-    --use_hf false
+2. **Download model weights** (base VLM + visual aux decoder):
+
+| Model | HuggingFace |
+|-------|-------------|
+| Qwen3-VL-4B-Instruct | [Qwen/Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) |
+| OneVL model weights | [xiaomi-research/onevl-models](https://huggingface.co/collections/xiaomi-research/onevl-models/) |
+
+3. **Prepare demo data**: 100-sample demo datasets are provided under `demo_data/navsim/` for quick verification.
+
+---
+
+#### Stage 0 — Warm-up SFT
+
+Standard supervised fine-tuning on answer-only or CoT data. Uses the vanilla `qwen3_vl` model type (no latent tokens yet).
+
+```bash
+# Single-node, auto-detects all GPUs
+bash run_script/train/navsim/sft_distributed_qwen3vl_answer_bs64.sh
+
+# Or CoT warm-up:
+bash run_script/train/navsim/sft_distributed_qwen3vl_cot_64.sh
 ```
 
-### Web-UI
-
-Web-UI是基于gradio界面技术的**零门槛**训练、部署界面方案，具体可以查看[这里](https://swift.readthedocs.io/zh-cn/latest/GetStarted/Web-UI.html)。
-
-```shell
-swift web-ui
-```
-![image.png](./docs/resources/web-ui.jpg)
-
-### 使用Python
-ms-swift也支持使用python的方式进行训练和推理。下面给出训练和推理的**伪代码**，具体可以查看[这里](https://github.com/modelscope/ms-swift/blob/main/examples/notebook/qwen2_5-self-cognition/self-cognition-sft.ipynb)。
-
-训练：
-```python
-from peft import LoraConfig, get_peft_model
-from swift import get_model_processor, get_template, load_dataset, EncodePreprocessor
-from swift.trainers import Seq2SeqTrainer, Seq2SeqTrainingArguments
-# 获取模型和template，并加入可训练的LoRA模块
-model, tokenizer = get_model_processor(model_id_or_path, ...)
-template = get_template(tokenizer, ...)
-lora_config = LoraConfig(...)
-model = get_peft_model(model, lora_config)
-
-# 下载并载入数据集，并将文本encode成tokens
-train_dataset, val_dataset = load_dataset(dataset_id_or_path, ...)
-train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
-val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
-
-# 进行训练
-training_args = Seq2SeqTrainingArguments(...)
-trainer = Seq2SeqTrainer(
-    model=model,
-    args=training_args,
-    template=template,
-    train_dataset=train_dataset,
-    eval_dataset=val_dataset,
-)
-trainer.train()
+Key config in the script:
+```bash
+MODEL_PATH="<path/to/Qwen3-VL-4B-Instruct>"
+DATASET_PATH="demo_data/navsim/navsim_answer_demo100.jsonl"  # replace with full dataset
+# --model_type qwen3_vl   (standard SFT, no latent CoT)
+# --deepspeed zero2
 ```
 
-推理：
-```python
-from swift import TransformersEngine, InferRequest, RequestConfig
-# 使用原生 transformers 引擎进行推理
-engine = TransformersEngine(model_id_or_path, adapters=[lora_checkpoint])
-infer_request = InferRequest(messages=[{'role': 'user', 'content': 'who are you?'}])
-request_config = RequestConfig(max_tokens=max_new_tokens, temperature=temperature)
+---
 
-resp_list = engine.infer([infer_request], request_config)
-print(f'response: {resp_list[0].choices[0].message.content}')
+#### Stage 1 — Train Auxiliary Decoders (main model frozen)
+
+Initialize the latent CoT structure. The main LLM is **frozen**; only the language and visual auxiliary decoders are trained.
+
+```bash
+bash run_script/train/navsim/sft_distributed_stage1_vis4_txt2_bs64.sh
 ```
 
-## ✨ 如何使用
+Key config to set before running:
+```bash
+MODEL_PATH="<path/to/stage0-checkpoint>"           # output from Stage 0
+VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"  # pre-trained visual aux decoder
 
-这里给出使用ms-swift进行训练到部署的最简示例，具体可以查看[examples](https://github.com/modelscope/ms-swift/tree/main/examples)。
+# Latent token counts: 4 visual + 2 language
+export LATENT_COT_C_THOUGHT_VISUAL=4
+export LATENT_COT_C_THOUGHT=2
 
-- 若想使用其他模型或者数据集（含多模态模型和数据集），你只需要修改`--model`指定对应模型的id或者path，修改`--dataset`指定对应数据集的id或者path即可。
-- 默认使用ModelScope进行模型和数据集的下载。如果要使用HuggingFace，指定`--use_hf true`即可。
-
-|   常用链接 |
-| ------ |
-|   [🔥命令行参数](https://swift.readthedocs.io/zh-cn/latest/Instruction/Command-line-parameters.html)   |
-|   [Megatron-SWIFT](https://swift.readthedocs.io/zh-cn/latest/Megatron-SWIFT/Quick-start.html)   |
-|   [GRPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/GetStarted/GRPO.html)   |
-|   [支持的模型和数据集](https://swift.readthedocs.io/zh-cn/latest/Instruction/Supported-models-and-datasets.html)   |
-|   [自定义模型](https://swift.readthedocs.io/zh-cn/latest/Customization/Custom-model.html), [🔥自定义数据集](https://swift.readthedocs.io/zh-cn/latest/Customization/Custom-dataset.html)   |
-|   [大模型教程](https://github.com/modelscope/modelscope-classroom/tree/main/LLM-tutorial)   |
-
-### 训练
-支持的训练方法：
-
-| 方法   | 全参数 | LoRA                                                                                        | QLoRA | Deepspeed | 多机 | 多模态                                                                                          |
-| ------ | ------ |---------------------------------------------------------------------------------------------| ----- | ------ | ------ |----------------------------------------------------------------------------------------------|
-| [预训练](https://github.com/modelscope/ms-swift/blob/main/examples/train/pretrain) | ✅ | ✅                                                                                           | ✅ | ✅ | ✅ | ✅                                                                                            |
-| [指令监督微调](https://github.com/modelscope/ms-swift/blob/main/examples/train/lora_sft.sh) | [✅](https://github.com/modelscope/ms-swift/blob/main/examples/train/full/train.sh) | ✅            | [✅](https://github.com/modelscope/ms-swift/tree/main/examples/train/qlora) | [✅](https://github.com/modelscope/ms-swift/tree/main/examples/train/multi-gpu/deepspeed) | [✅](https://github.com/modelscope/ms-swift/tree/main/examples/train/multi-node) | [✅](https://github.com/modelscope/ms-swift/tree/main/examples/train/multimodal)              |
-| [GRPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/grpo) | ✅ | ✅                                                                                           | ✅ | ✅ | ✅ | ✅                                                                                            |
-| [GKD](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/gkd) | ✅ | ✅           | ✅ | ✅ | ✅ | [✅](https://github.com/modelscope/ms-swift/blob/main/examples/train/multimodal/rlhf/gkd)  |
-| [PPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/ppo) | ✅ | ✅            | ✅ | ✅ | ✅ | ❌                                                                                            |
-| [DPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/dpo) | ✅ | ✅            | ✅ | ✅ | ✅ | [✅](https://github.com/modelscope/ms-swift/blob/main/examples/train/multimodal/rlhf/dpo)  |
-| [KTO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/kto.sh) | ✅ | ✅            | ✅ | ✅ | ✅ | [✅](https://github.com/modelscope/ms-swift/blob/main/examples/train/multimodal/rlhf/kto.sh)  |
-| [奖励模型](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/rm.sh) | ✅ | ✅             | ✅ | ✅ | ✅ | ✅                                                                                            |
-| [CPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/cpo.sh) | ✅ | ✅            | ✅ | ✅ | ✅ | ✅                                                                                            |
-| [SimPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/simpo.sh) | ✅ | ✅          | ✅ | ✅| ✅ | ✅                                                                                            |
-| [ORPO](https://github.com/modelscope/ms-swift/blob/main/examples/train/rlhf/orpo.sh) | ✅ | ✅           | ✅ | ✅ | ✅ | ✅                                                                                            |
-| [Embedding](https://github.com/modelscope/ms-swift/blob/main/examples/train/embedding) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅  |
-| [Reranker](https://github.com/modelscope/ms-swift/tree/main/examples/train/reranker) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [序列分类](https://github.com/modelscope/ms-swift/blob/main/examples/train/seq_cls) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-
-预训练：
-```shell
-# 8*A100
-NPROC_PER_NODE=8 \
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
-swift pt \
-    --model Qwen/Qwen2.5-7B \
-    --dataset swift/chinese-c4 \
-    --streaming true \
-    --tuner_type full \
-    --deepspeed zero2 \
-    --output_dir output \
-    --max_steps 10000 \
-    ...
+# Freeze main model, train aux decoders only
+export LATENT_COT_FREEZE_MAIN_MODEL=true
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
+export LATENT_COT_FREEZE_AUX_DECODER=false
 ```
 
-微调：
-```shell
-CUDA_VISIBLE_DEVICES=0 swift sft \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --dataset AI-ModelScope/alpaca-gpt4-data-zh \
-    --tuner_type lora \
-    --output_dir output \
-    ...
+---
+
+#### Stage 2 — End-to-End Fine-tuning
+
+Unfreeze all components and jointly optimize the full model.
+
+```bash
+bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 ```
 
-RLHF：
-```shell
-CUDA_VISIBLE_DEVICES=0 swift rlhf \
-    --rlhf_type dpo \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --dataset hjh0119/shareAI-Llama3-DPO-zh-en-emoji \
-    --tuner_type lora \
-    --output_dir output \
-    ...
+Key config to set before running:
+```bash
+MODEL_PATH="<path/to/stage1-checkpoint>"           # output from Stage 1
+VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"
+
+# Unfreeze everything
+export LATENT_COT_FREEZE_MAIN_MODEL=false
+export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
+export LATENT_COT_FREEZE_AUX_DECODER=false
+# --deepspeed zero2
+# --num_train_epochs 5
 ```
 
-### Megatron-SWIFT
+---
 
-ms-swift支持使用Megatron并行技术加速训练，包括大规模集群训练和MoE模型训练。以下为支持的训练方法：
+#### Multi-node Training
 
-| 方法   | 全参数 | LoRA | MoE | 多模态 | FP8 |
-| ------ | ------ | ---- | ----- | ----- | ----- |
-| 预训练 | ✅ | ✅| ✅ | ✅ | ✅ |
-| [指令监督微调](https://github.com/modelscope/ms-swift/tree/main/examples/megatron) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [GRPO](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/grpo) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [DPO](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/rlhf/dpo) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [KTO](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/rlhf/kto) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [RM](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/rlhf/rm) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [Embedding](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/embedding) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [Reranker](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/reranker) | ✅ | ✅| ✅ | ✅ | ✅ |
-| [序列分类](https://github.com/modelscope/ms-swift/tree/main/examples/megatron/seq_cls) | ✅ | ✅| ✅ | ✅ | ✅ |
+All scripts read standard distributed env vars. To run on 2 nodes (8 GPUs each):
 
+```bash
+# Node 0 (master)
+NNODES=2 NODE_RANK=0 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 
-```shell
-NPROC_PER_NODE=2 CUDA_VISIBLE_DEVICES=0,1 megatron sft \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --save_safetensors true \
-    --dataset AI-ModelScope/alpaca-gpt4-data-zh \
-    --tuner_type lora \
-    --output_dir output \
-    ...
+# Node 1
+NNODES=2 NODE_RANK=1 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 ```
 
-### 强化学习
+> **Tip:** In cluster environments (MLP/Volcano), the vars `WORKER_NUM`, `ROLE_INDEX`, `WORKER_0_HOST`, and `WORKER_0_PORT` are automatically picked up by the scripts.
 
-ms-swift支持丰富GRPO族算法：
+---
 
-| 方法   | 全参数 | LoRA | 多模态   | 多机 |
-| ------ | ------ | ---- | ----- | ----- |
-| [GRPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/GetStarted/GRPO.html) | ✅ | ✅| ✅ | ✅ |
-| [DAPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/DAPO.html) | ✅ | ✅| ✅ | ✅ |
-| [GSPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/GSPO.html) | ✅ | ✅| ✅ | ✅ |
-| [SAPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/SAPO.html) | ✅ | ✅| ✅ | ✅ |
-| [CISPO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/CISPO.html) | ✅ | ✅| ✅ | ✅ |
-| [CHORD](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/CHORD.html) | ✅ | ✅| ✅ | ✅ |
-| [RLOO](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/RLOO.html) |  ✅ | ✅| ✅ | ✅ |
-| [Reinforce++](https://swift.readthedocs.io/zh-cn/latest/Instruction/GRPO/AdvancedResearch/REINFORCEPP.html) | ✅ | ✅| ✅ | ✅ |
+#### Training Summary
 
-```shell
-CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 \
-swift rlhf \
-    --rlhf_type grpo \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --tuner_type lora \
-    --use_vllm true \
-    --vllm_mode colocate \
-    --dataset AI-MO/NuminaMath-TIR#10000 \
-    --output_dir output \
-    ...
-```
+| Stage | Script | Frozen | Trainable | DeepSpeed |
+|-------|--------|--------|-----------|-----------|
+| 0 — Warm-up SFT | `sft_distributed_qwen3vl_answer_bs64.sh` | — | Full model | ZeRO-2 |
+| 1 — Aux decoder init | `sft_distributed_stage1_vis4_txt2_bs64.sh` | Main LLM + ViT | Aux decoders | ZeRO-2 |
+| 2 — E2E fine-tuning | `sft_distributed_stage2_vis4_txt2_bs64.sh` | — | Full model | ZeRO-2 |
 
-### 推理
-```shell
-CUDA_VISIBLE_DEVICES=0 swift infer \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --stream true \
-    --infer_backend transformers \
-    --max_new_tokens 2048
+---
 
-# LoRA
-CUDA_VISIBLE_DEVICES=0 swift infer \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --adapters swift/test_lora \
-    --stream true \
-    --infer_backend transformers \
-    --temperature 0 \
-    --max_new_tokens 2048
-```
+## Citation
 
-### 界面推理
-```shell
-CUDA_VISIBLE_DEVICES=0 swift app \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --stream true \
-    --infer_backend transformers \
-    --max_new_tokens 2048 \
-    --lang zh
-```
+## Citation
 
-### 部署
-```shell
-CUDA_VISIBLE_DEVICES=0 swift deploy \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --infer_backend vllm
-```
-
-### 采样
-```shell
-CUDA_VISIBLE_DEVICES=0 swift sample \
-    --model LLM-Research/Meta-Llama-3.1-8B-Instruct \
-    --sampler_engine transformers \
-    --num_return_sequences 5 \
-    --dataset AI-ModelScope/alpaca-gpt4-data-zh#5
-```
-
-### 评测
-```shell
-CUDA_VISIBLE_DEVICES=0 swift eval \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --infer_backend lmdeploy \
-    --eval_backend OpenCompass \
-    --eval_dataset ARC_c
-```
-
-### 量化
-```shell
-CUDA_VISIBLE_DEVICES=0 swift export \
-    --model Qwen/Qwen2.5-7B-Instruct \
-    --quant_bits 4 --quant_method awq \
-    --dataset AI-ModelScope/alpaca-gpt4-data-zh \
-    --output_dir Qwen2.5-7B-Instruct-AWQ
-```
-
-### 推送模型
-```shell
-swift export \
-    --model <model-path> \
-    --push_to_hub true \
-    --hub_model_id '<model-id>' \
-    --hub_token '<sdk-token>'
-```
-
-
-## 🏛 License
-
-本框架使用[Apache License (Version 2.0)](https://github.com/modelscope/modelscope/blob/master/LICENSE)进行许可。模型和数据集请查看原资源页面并遵守对应License。
-
-## 📎 引用
+If you find this work useful, please cite:
 
 ```bibtex
-@misc{zhao2024swiftascalablelightweightinfrastructure,
-      title={SWIFT:A Scalable lightWeight Infrastructure for Fine-Tuning},
-      author={Yuze Zhao and Jintao Huang and Jinghan Hu and Xingjun Wang and Yunlin Mao and Daoze Zhang and Zeyinzi Jiang and Zhikai Wu and Baole Ai and Ang Wang and Wenmeng Zhou and Yingda Chen},
-      year={2024},
-      eprint={2408.05517},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2408.05517},
+@article{lu2026onevl,
+  title={OneVL: One-Step Latent Reasoning and Planning with Vision-Language Explanation},
+  author={Lu, Jinghui and Guan, Jiayi and Huang, Zhijian and Li, Jinlong and Li, Guang and Kong, Lingdong and Li, Yingyan and Wang, Han and Xu, Shaoqing and Luo, Yuechen and others},
+  journal={arXiv preprint arXiv:2604.18486},
+  year={2026},
+  url={https://arxiv.org/abs/2604.18486}
 }
 ```
 
-## Star History
+---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=modelscope/swift&type=Date)](https://star-history.com/#modelscope/ms-swift&Date)
+## License
+
+This project is released under the [Apache 2.0 License](LICENSE).
+
+Model weights are built on [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) and the visual tokenizer is from [Emu3.5-VisionTokenizer](https://huggingface.co/BAAI/Emu3.5-VisionTokenizer); please refer to their respective licenses as well.
+
+---
+
+## Acknowledgements
+
+- [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) — backbone VLM
+- [Emu3.5](https://github.com/baaivision/Emu3) — IBQ visual tokenizer
+- [AdaThinkDrive](https://github.com/luo-yc17/AdaThinkDrive/tree/main) — NAVSIM CoT annotations
+- [NAVSIM](https://github.com/autonomousvision/navsim), [ROADWork](https://github.com/vita-epfl/roadwork), [Impromptu](https://github.com/Xiaomi-CHI/Impromptu) — evaluation benchmarks

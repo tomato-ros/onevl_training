@@ -58,11 +58,11 @@ def main():
     parser.add_argument(
         "--jsonl",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_test_cot_full_idx_trainfmt_with_future_tokens_256.jsonl")
+        default="data/navsim_test_cot_full_idx_trainfmt_with_future_tokens_256.jsonl")
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/demo_data/navsim_gt_compare")
+        default="demo_data/navsim_gt_compare")
     parser.add_argument("-n", type=int, default=20000, help="抽样条数")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="cuda:0")

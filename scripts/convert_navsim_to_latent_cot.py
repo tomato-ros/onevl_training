@@ -66,7 +66,7 @@ def convert_item(item: dict) -> dict:
 
 def main():
     src = Path("/e2e-data/evad-tech-vla/lujinghui/lujinghui/datasets/navsim/navsim_train_cot_full_idx_train_with_future_tokens_256_clean.json")
-    dst = Path("/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_latent_cot_full.jsonl")
+    dst = Path("data/navsim_latent_cot_full.jsonl")
 
     if len(sys.argv) >= 2:
         src = Path(sys.argv[1])

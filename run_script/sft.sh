@@ -6,7 +6,7 @@ set -x
 # For multi-GPU, use sft_distributed.sh instead
 # ============================================================
 
-source /e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/activate
+source projects/ms-swift/.venv/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"

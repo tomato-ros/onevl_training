@@ -43,7 +43,7 @@ def main():
     parser.add_argument(
         "input_jsonl",
         type=str,
-        default="/e2e-data/evad-tech-vla/lujinghui/ms-swift/data/navsim_latent_cot_full.jsonl",
+        default="data/navsim_latent_cot_full.jsonl",
         nargs="?",
         help="输入 jsonl 路径",
     )

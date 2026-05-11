@@ -49,7 +49,7 @@ def get_input_images_from_messages(messages: list) -> list[str]:
 
 
 def main():
-    default_predict = "/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-044424/checkpoint-6000/infer_results_prefill_explain/_splits_1774412802/predict_4.json"
+    default_predict = "outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_512_bs64_with_viscondition/v0-20260324-044424/checkpoint-6000/infer_results_prefill_explain/_splits_1774412802/predict_4.json"
     parser = argparse.ArgumentParser(
         description="从 predict_*.json 保存原图 + visual token 解码图便于对比"
     )
