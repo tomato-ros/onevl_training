@@ -296,7 +296,7 @@ def main():
     if not template_path:
         # 默认使用 veomni 的 eval_results_full_25e.json 作为模版（与参考格式一致）
         template_path = (
-            "/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi_interleave/outputs/navsim/"
+            "veomni_xiaomi_interleave/outputs/navsim/"
             "qwen3_vl_onevl_interleave_512_1e-6_e25_freeze_vaux_nodistill_noref/"
             "checkpoints/global_step_20150/eval_results_full_25e.json"
         )

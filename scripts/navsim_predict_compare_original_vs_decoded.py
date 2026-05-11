@@ -69,7 +69,7 @@ def main():
     parser.add_argument(
         "--model_root",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/roadworks/models/emu35",
+        default="emu35",
         help="Emu3.5 模型根目录（含 Emu3.5-VisionTokenizer）",
     )
     args = parser.parse_args()

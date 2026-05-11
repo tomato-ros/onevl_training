@@ -27,7 +27,7 @@ MAX_NEW_TOKENS=1024
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
 # Requires AUX_MODEL_PATH to be set.
 DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
-AUX_MODEL_PATH=${AUX_MODEL_PATH:-"//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"}
+AUX_MODEL_PATH=${AUX_MODEL_PATH:-"/qwen3vl/Qwen3-VL-4B-Instruct"}
 AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-false}
 C_THOUGHT=${C_THOUGHT:-2}
 MAX_EXPLAIN_TOKENS=${MAX_EXPLAIN_TOKENS:-512}
@@ -36,7 +36,7 @@ ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
 # Visual decoder explain: set to "true" to enable visual aux decoder
 # Requires VISUAL_AUX_MODEL_PATH to be set.
 VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
-VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
+VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
 VISUAL_AUX_VISUAL_CONDITION=${VISUAL_AUX_VISUAL_CONDITION:-true}
 C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-4}
 MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-1024}

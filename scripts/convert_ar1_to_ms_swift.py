@@ -129,25 +129,25 @@ def main():
     parser.add_argument(
         "--val",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/ar1_labels/jsonl/val.jsonl",
+        default="",
         help="val.jsonl 路径",
     )
     parser.add_argument(
         "--train",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/ar1_labels/jsonl/train.jsonl",
+        default="",
         help="train.jsonl 路径",
     )
     parser.add_argument(
         "--test",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/ar1_labels/jsonl/test.jsonl",
+        default="",
         help="test.jsonl 路径",
     )
     parser.add_argument(
         "--images-base",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/ar1_labels",
+        default="",
         help="images 相对路径的基准目录，设为绝对路径后写入 jsonl；空则保持相对路径",
     )
     args = parser.parse_args()

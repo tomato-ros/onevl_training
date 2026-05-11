@@ -29,7 +29,7 @@ def main():
     p.add_argument(
         "--images-base",
         type=str,
-        default="/e2e-data/embodied-research-data/opendata/ar1_labels",
+        default="",
         help="images 相对路径的基准目录",
     )
     args = p.parse_args()

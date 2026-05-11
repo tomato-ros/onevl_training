@@ -9,9 +9,9 @@ import time
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, default="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/outputs/baseline_answer_qwen_allfinetune/v0-20260311-073119/checkpoint-3228")
+    parser.add_argument("--model_path", type=str, default="")
     parser.add_argument("--test_set_path", type=str,default="projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json")
-    parser.add_argument("--output_path", type=str,default="/e2e-data/evad-tech-vla/huangzhijian/projects/ms-swift/analysis/qwen3_vl_infer_all.json")
+    parser.add_argument("--output_path", type=str,default="")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--max_new_tokens", type=int, default=1024)
     parser.add_argument("--add_assistant_prefix", action="store_true")

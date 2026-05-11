@@ -39,7 +39,7 @@ def _response_to_traj(resp: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", type=str, required=True)
-    parser.add_argument("--ref_path", type=str, default="/e2e-data/evad-tech-vla/lujinghui/models/navsim_stage2_4vis_2txt/checkpoint-4035/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json")
+    parser.add_argument("--ref_path", type=str, default="models/navsim_stage2_4vis_2txt/checkpoint-4035/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json")
     parser.add_argument("--output_path", type=str, required=True)
     parser.add_argument("--is_cot", action="store_true")
     args = parser.parse_args()

@@ -30,10 +30,10 @@ MASTER_ADDR=${WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct" ## previous stage2 model path
-AUX_MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
-# VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
-VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad_512/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
+MODEL_PATH="qwen3vl/Qwen3-VL-4B-Instruct" ## previous stage2 model path
+AUX_MODEL_PATH="qwen3vl/Qwen3-VL-4B-Instruct"
+# VISUAL_AUX_MODEL_PATH="/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
+VISUAL_AUX_MODEL_PATH="models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad_512/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
 DATASET_PATH="${SCRIPT_DIR}/demo_data/navsim/navsim_vis4_text2_demo100.jsonl"
 
 # ---------- Latent CoT configuration ----------

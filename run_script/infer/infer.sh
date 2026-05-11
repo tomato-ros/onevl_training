@@ -6,7 +6,7 @@
 source projects/ms-swift/.venv/bin/activate
 rm -rf /root/.cache
 
-cd /e2e-data/evad-tech-vla/lujinghui/ms-swift
+cd ms-swift
 
 set -e
 
@@ -18,7 +18,7 @@ export PYTHONPATH="${MS_SWIFT_ROOT}:${PYTHONPATH:-}"
 # ---- Configuration ----
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}
 MODEL=outputs/internvl_8B_sft/v0-20260310-124057/checkpoint-3990
-VAL_DATASET=/e2e-data/evad-tech-vla/lujinghui/lujinghui/datasets/navsim/dataset_navsim_test_traj1.jsonl
+VAL_DATASET=lujinghui/datasets/navsim/dataset_navsim_test_traj1.jsonl
 RESULT_PATH=outputs/internvl_8B_sft/results/predict_full_6e.jsonl
 # Canonical absolute path so all nodes use same SPLIT_DIR (required for shared storage)
 OUTPUT_DIR=$(cd "$(dirname "${RESULT_PATH}")" && pwd)
