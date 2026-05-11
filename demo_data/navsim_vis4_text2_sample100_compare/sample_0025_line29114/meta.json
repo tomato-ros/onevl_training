@@ -1,8 +1,0 @@
-{
-  "jsonl_line_index": 29114,
-  "sample_rank": 25,
-  "images": [
-    "/e2e-data/evad-osc-datasets/datasets/navsim_v1.1_all/dataset/sensor_blobs/trainval/2021.07.09.20.59.12_veh-38_04342_05676/CAM_F0/8502625424b45a01.jpg"
-  ],
-  "num_future_blocks": 2
-}

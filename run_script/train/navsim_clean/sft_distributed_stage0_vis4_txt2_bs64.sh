@@ -30,9 +30,8 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis4_text2.jsonl"
-VAL_DATASET_PATH="/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json"
+MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
+DATASET_PATH="${SCRIPT_DIR}/demo_data/navsim/navsim_vis4_text2_demo100.jsonl"
 
 # ---------- Launch training ----------
 mkdir -p "${SCRIPT_DIR}/logs"
@@ -48,7 +47,6 @@ swift sft \
     --model_type qwen3_vl \
     --train_type full \
     --dataset "${DATASET_PATH}" \
-    --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
     --num_train_epochs 2 \
     --per_device_train_batch_size 2 \
@@ -69,5 +67,5 @@ swift sft \
     --freeze_vit False \
     --dataloader_num_workers 8 \
     --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3vl_stage0_vis4_txt2" \
-    --deepspeed zero3 \
+    --deepspeed zero2 \
   2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3vl_stage0_vis4_txt2.log"

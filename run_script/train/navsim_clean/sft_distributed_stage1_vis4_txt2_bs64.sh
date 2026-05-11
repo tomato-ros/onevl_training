@@ -30,12 +30,10 @@ MASTER_ADDR=${MLP_WORKER_0_HOST:-127.0.0.1}
 MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
 
 # ---------- Model paths ----------
-MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3vl_stage0_vis4_txt2/v3-20260316-104219/checkpoint-3228" ## previous stage1 model path
-AUX_MODEL_PATH="//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
-# VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"
-VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/navsim/qwen3_vl_visual_aux_decoder_512/checkpoints/global_step_15634/hf_ckpt" ## pretrain visual aux decoder model path
-DATASET_PATH="${SCRIPT_DIR}/data/navsim_vis4_text2.jsonl"
-VAL_DATASET_PATH="${SCRIPT_DIR}/data/navsim_val_latent_cot.jsonl"
+MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct" ## previous stage1 model path
+AUX_MODEL_PATH="/e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"
+VISUAL_AUX_MODEL_PATH="/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad_512/checkpoints/global_step_13040/hf_ckpt" ## pretrain visual aux decoder model path
+DATASET_PATH="${SCRIPT_DIR}/demo_data/navsim/navsim_vis4_text2_demo100.jsonl"
 
 # ---------- Latent CoT configuration ----------
 export LATENT_COT_C_THOUGHT=2
@@ -44,7 +42,7 @@ export LATENT_COT_AUX_MODEL_PATH="${AUX_MODEL_PATH}"
 export LATENT_COT_VISUAL_AUX_MODEL_PATH="${VISUAL_AUX_MODEL_PATH}"
 export LATENT_COT_EXPLAIN_LOSS_WEIGHT=1.0 ## text aux decoder ce loss
 export LATENT_COT_VISUAL_EXPLAIN_LOSS_WEIGHT=0.1 ## visual aux decoder ce loss
-export LATENT_COT_AUX_VISUAL_CONDITION=false ## text aux decoder use vit embedding
+export LATENT_COT_AUX_VISUAL_CONDITION=true ## text aux decoder use vit embedding
 export LATENT_COT_VISUAL_AUX_VISUAL_CONDITION=true ## visual aux decoder use vit embedding
 export LATENT_COT_USE_SEPARATE_VISUAL_LATENT_TOKENS=true ## use separate latent tokens for text/visual
 
@@ -70,17 +68,16 @@ swift sft \
     --template qwen3_vl_latent_cot \
     --train_type full \
     --dataset "${DATASET_PATH}" \
-    --val_dataset "${VAL_DATASET_PATH}" \
     --torch_dtype bfloat16 \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
     --learning_rate 1e-4 \
     --loss_type latent_cot \
     --lr_scheduler_type cosine \
-    --gradient_accumulation_steps 1 \
-    --save_steps 500 \
-    --eval_steps 500 \
+    --gradient_accumulation_steps 2 \
+    --save_strategy epoch \
+    --eval_strategy epoch \
     --save_total_limit 3 \
     --logging_steps 5 \
     --max_length 4096 \
@@ -90,7 +87,7 @@ swift sft \
     --freeze_llm true \
     --freeze_aligner true \
     --dataloader_num_workers 4 \
-    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2" \
+    --output_dir "${SCRIPT_DIR}/outputs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512_bs64_with_viscondition" \
     --gradient_checkpointing true \
-    --deepspeed zero3 \
-  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2.log"
+    --deepspeed zero2 \
+  2>&1 | tee "${SCRIPT_DIR}/logs/navsim/qwen3_vl_latent_cot_stage1_vis4_txt2_fixbug_512_bs64_with_viscondition.log"
