@@ -14,7 +14,7 @@ set -e
 PYTHON=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/.venv/bin/python3
 
 # ---- Configuration (edit these) ----
-MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_subtokens_weigh1/v0-20260315-110932/checkpoint-4842
+MODEL_PATH=/e2e-data/evad-tech-vla/lujinghui/ms-swift/outputs/navsim/qwen3_vl_latent_cot_stage2_vis4_txt2_fixbug_256_bs64_notext/v0-20260323-132232/checkpoint-4842
 TEST_SET_PATH=/e2e-data/evad-tech-vla/huangzhijian5/projects/ms-swift/data/navsim_test_cot_full_idx_trainfmt.json
 OUTPUT_PATH=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged.json
 OUTPUT_PATH_EVAL=${MODEL_PATH}/infer_results_prefill/qwen3_vl_infer_onevl_merged_eval.json
@@ -27,18 +27,24 @@ MAX_NEW_TOKENS=1024
 # Decoder explain: set to "true" to enable aux text decoder explaining latent reasoning
 # Requires AUX_MODEL_PATH to be set.
 DECODER_EXPLAIN=${DECODER_EXPLAIN:-false}
-AUX_MODEL_PATH=${AUX_MODEL_PATH:-"//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct-latent"}
-AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-true}
-C_THOUGHT=${C_THOUGHT:-6}
+AUX_MODEL_PATH=${AUX_MODEL_PATH:-"//e2e-data/embodied-research-data/opendata/roadworks/models/qwen3vl/Qwen3-VL-4B-Instruct"}
+AUX_VISUAL_CONDITION=${AUX_VISUAL_CONDITION:-false}
+C_THOUGHT=${C_THOUGHT:-2}
 MAX_EXPLAIN_TOKENS=${MAX_EXPLAIN_TOKENS:-512}
 ADD_ASSISTANT_PREFIX="--add_assistant_prefix"
 
 # Visual decoder explain: set to "true" to enable visual aux decoder
 # Requires VISUAL_AUX_MODEL_PATH to be set.
 VISUAL_DECODER_EXPLAIN=${VISUAL_DECODER_EXPLAIN:-false}
-VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/veomni_xiaomi/outputs/roadwork/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
-C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-6}
-MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-512}
+VISUAL_AUX_MODEL_PATH=${VISUAL_AUX_MODEL_PATH:-"/e2e-data/evad-tech-vla/lujinghui/models/visual_aux_decoder/qwen3_vl_visual_aux_decoder_ad/checkpoints/global_step_13040/hf_ckpt"}
+VISUAL_AUX_VISUAL_CONDITION=${VISUAL_AUX_VISUAL_CONDITION:-true}
+C_THOUGHT_VISUAL=${C_THOUGHT_VISUAL:-4}
+MAX_VISUAL_TOKENS=${MAX_VISUAL_TOKENS:-1024}
+
+# Original vocab / all subtokens / separate visual latent tokens (match training)
+USE_ORIGINAL_VOCAB=${USE_ORIGINAL_VOCAB:-true}
+USE_ALL_SUBTOKENS=${USE_ALL_SUBTOKENS:-true}
+USE_SEPARATE_VISUAL_LATENT_TOKENS=${USE_SEPARATE_VISUAL_LATENT_TOKENS:-true}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 INFER_SCRIPT="${SCRIPT_DIR}/../qwen3_vl_infer_onevl.py"
@@ -53,13 +59,32 @@ if [ "${DECODER_EXPLAIN}" = "true" ]; then
 fi
 if [ "${VISUAL_DECODER_EXPLAIN}" = "true" ]; then
     EXTRA_FLAGS="${EXTRA_FLAGS} --visual_decoder_explain --visual_aux_model_path ${VISUAL_AUX_MODEL_PATH} --c_thought_visual ${C_THOUGHT_VISUAL} --max_visual_tokens ${MAX_VISUAL_TOKENS}"
+    if [ "${VISUAL_AUX_VISUAL_CONDITION}" = "true" ]; then
+        EXTRA_FLAGS="${EXTRA_FLAGS} --visual_aux_visual_condition"
+    fi
+fi
+if [ "${USE_ORIGINAL_VOCAB}" = "true" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --use_original_vocab"
+fi
+if [ "${USE_ALL_SUBTOKENS}" = "true" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --use_all_subtokens"
+fi
+if [ "${USE_SEPARATE_VISUAL_LATENT_TOKENS}" = "true" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --use_separate_visual_latent_tokens"
 fi
 
 echo "=== OneVL Inference Configuration ==="
-echo "  MODEL_PATH:            ${MODEL_PATH}"
-echo "  DECODER_EXPLAIN:       ${DECODER_EXPLAIN}"
-echo "  VISUAL_DECODER_EXPLAIN:${VISUAL_DECODER_EXPLAIN}"
-echo "  EXTRA_FLAGS:           ${EXTRA_FLAGS}"
+echo "  MODEL_PATH:              ${MODEL_PATH}"
+echo "  DECODER_EXPLAIN:         ${DECODER_EXPLAIN}"
+echo "  AUX_VISUAL_CONDITION:    ${AUX_VISUAL_CONDITION}"
+echo "  C_THOUGHT:               ${C_THOUGHT}"
+echo "  VISUAL_DECODER_EXPLAIN:  ${VISUAL_DECODER_EXPLAIN}"
+echo "  VISUAL_AUX_VISUAL_COND:  ${VISUAL_AUX_VISUAL_CONDITION}"
+echo "  C_THOUGHT_VISUAL:        ${C_THOUGHT_VISUAL}"
+echo "  USE_ORIGINAL_VOCAB:      ${USE_ORIGINAL_VOCAB}"
+echo "  USE_ALL_SUBTOKENS:       ${USE_ALL_SUBTOKENS}"
+echo "  USE_SEPARATE_VIS_TOKENS: ${USE_SEPARATE_VISUAL_LATENT_TOKENS}"
+echo "  EXTRA_FLAGS:             ${EXTRA_FLAGS}"
 echo "======================================"
 
 # ---- Multi-node: same as train.sh (MLP_WORKER_NUM, MLP_ROLE_INDEX) ----
