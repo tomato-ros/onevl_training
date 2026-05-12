@@ -50,10 +50,10 @@ OneVL augments **Qwen3-VL-4B-Instruct** with:
 
 | Component | Status |
 |-----------|--------|
-| 📄 Technical Report | ✅ Release |
-| ⚖️ Model Weights | ✅ Release |
-| 🔍 Inference Code | ✅ Release |
-| 🏋️ Training Code | 🔜 Coming Soon |
+| 📄 Technical Report | ✅ [Tech report](https://arxiv.org/abs/2604.18486) |
+| ⚖️ Model Weights | ✅ [Weights](https://huggingface.co/collections/xiaomi-research/onevl-models) |
+| 🔍 Inference Code | ✅ [Code](https://github.com/xiaomi-research/onevl)|
+| 🏋️ Training Code | ✅ [Code](https://github.com/GeorgeLuImmortal/OneVL_training/tree/main) |
 
 ---
 
@@ -207,8 +207,7 @@ Training OneVL follows a **3-stage pipeline** on top of [ms-swift](https://githu
 1. **Install ms-swift** (and its dependencies):
 
 ```bash
-pip install git+https://github.com/modelscope/ms-swift.git#egg=ms-swift[all]
-pip install "deepspeed<0.19" qwen_vl_utils timm
+pip install -e .
 # Install flash-attn matching your CUDA version from:
 # https://github.com/Dao-AILab/flash-attention/releases
 ```
@@ -229,11 +228,13 @@ pip install "deepspeed<0.19" qwen_vl_utils timm
 Standard supervised fine-tuning on answer-only or CoT data. Uses the vanilla `qwen3_vl` model type (no latent tokens yet).
 
 ```bash
-# Single-node, auto-detects all GPUs
-bash run_script/train/navsim/sft_distributed_qwen3vl_answer_bs64.sh
 
-# Or CoT warm-up:
+bash run_script/train/navsim/sft_distributed_stage0_vis4_txt2_bs64.sh
+
+# Or CoT baseline:
 bash run_script/train/navsim/sft_distributed_qwen3vl_cot_64.sh
+# Or answer-only baseline:
+bash run_script/train/navsim/sft_distributed_qwen3vl_answer_bs64.sh
 ```
 
 Key config in the script:
@@ -306,7 +307,7 @@ NNODES=2 NODE_RANK=0 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_dis
 NNODES=2 NODE_RANK=1 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 ```
 
-> **Tip:** In cluster environments (MLP/Volcano), the vars `WORKER_NUM`, `ROLE_INDEX`, `WORKER_0_HOST`, and `WORKER_0_PORT` are automatically picked up by the scripts.
+> **Tip:** In cluster environments, the vars `WORKER_NUM`, `ROLE_INDEX`, `WORKER_0_HOST`, and `WORKER_0_PORT` are automatically picked up by the scripts, you should change this to fit your environment.
 
 ---
 
@@ -319,8 +320,6 @@ NNODES=2 NODE_RANK=1 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_dis
 | 2 — E2E fine-tuning | `sft_distributed_stage2_vis4_txt2_bs64.sh` | — | Full model | ZeRO-2 |
 
 ---
-
-## Citation
 
 ## Citation
 

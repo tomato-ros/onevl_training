@@ -50,10 +50,10 @@ OneVL augments **Qwen3-VL-4B-Instruct** with:
 
 | Component | Status |
 |-----------|--------|
-| 📄 Technical Report | ✅ Release |
-| ⚖️ Model Weights | ✅ Release |
-| 🔍 Inference Code | ✅ Release |
-| 🏋️ Training Code | 🔜 Coming Soon |
+| 📄 Technical Report | ✅ [Tech report](https://arxiv.org/abs/2604.18486) |
+| ⚖️ Model Weights | ✅ [Weights](https://huggingface.co/collections/xiaomi-research/onevl-models) |
+| 🔍 Inference Code | ✅ [Code](https://github.com/xiaomi-research/onevl)|
+| 🏋️ Training Code | ✅ [Code](https://github.com/GeorgeLuImmortal/OneVL_training/tree/main) |
 
 ---
 
