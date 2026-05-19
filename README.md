@@ -350,5 +350,5 @@ Model weights are built on [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qw
 - [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) — backbone VLM
 - [Emu3.5](https://github.com/baaivision/Emu3) — IBQ visual tokenizer
 - [AdaThinkDrive](https://github.com/luo-yc17/AdaThinkDrive/tree/main) — NAVSIM CoT annotations
-- [NAVSIM](https://github.com/autonomousvision/navsim), [ROADWork](https://github.com/vita-epfl/roadwork), [Impromptu](https://github.com/Xiaomi-CHI/Impromptu) — evaluation benchmarks
+- [NAVSIM](https://github.com/autonomousvision/navsim), [ROADWork](https://github.com/anuragxel/roadwork-dataset), [Impromptu](https://github.com/ahydchh/Impromptu-VLA) — evaluation benchmarks
 - [ms-swfit](https://github.com/modelscope/ms-swift) - training framework
