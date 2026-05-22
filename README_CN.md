@@ -1,179 +1,183 @@
 <div align="center">
 
-# <img src="assets/onevl_logo_new.png" alt="OneVL Logo" height="48" style="vertical-align:middle"/> OneVL: One-Step Latent Reasoning and Planning with Vision-Language Explanations
+# <img src="assets/onevl_logo_new.png" alt="OneVL Logo" height="48" style="vertical-align:middle"/> OneVL：融合图文解释的单步隐式推理规划视觉语言动作模型
 
-[![Tech Report](https://img.shields.io/badge/Tech%20Report-arXiv-red?style=flat-square&logo=arxiv)](https://arxiv.org/abs/2604.18486/)
-[![Project Page](https://img.shields.io/badge/Project%20Page-blue?style=flat-square&logo=googlechrome)](https://xiaomi-embodied-intelligence.github.io/OneVL/)
-[![Model Weights](https://img.shields.io/badge/Model%20Weights-HuggingFace-yellow?style=flat-square&logo=huggingface)](https://huggingface.co/collections/xiaomi-research/onevl-models/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](LICENSE)
+[![技术报告](https://img.shields.io/badge/Tech%20Report-arXiv-red?style=flat-square&logo=arxiv)](https://arxiv.org/abs/2604.18486/)
+[![项目主页](https://img.shields.io/badge/Project%20Page-blue?style=flat-square&logo=googlechrome)](https://xiaomi-embodied-intelligence.github.io/OneVL/)
+[![模型权重](https://img.shields.io/badge/Model%20Weights-HuggingFace-yellow?style=flat-square&logo=huggingface)](https://huggingface.co/collections/xiaomi-research/onevl-models/)
+[![开源协议](https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square)](LICENSE)
+
 
 </div>
 
 ---
 
-## Overview
+[English](README.md)、[简体中文](README_CN.md)
 
-**OneVL** is a Vision-Language-Action (VLA) framework for autonomous driving that achieves **state-of-the-art trajectory prediction accuracy** with **inference latency matching answer-only AR models**. It overcomes the fundamental limitations of prior latent Chain-of-Thought (CoT) methods by introducing dual-modal auxiliary decoders that supervise compact latent tokens to encode both linguistic reasoning and future scene dynamics.
+## 项目概述
 
-### Three CoT Paradigms
+OneVL是面向自动驾驶场景的**视觉-语言-动作（VLA）**框架，轨迹预测精度达到业界顶尖水准，推理延迟与仅输出结果的自回归模型持平。
+该框架创新性引入双模态辅助解码器，解决传统隐式思维链算法的固有缺陷，通过约束紧凑隐式表征同时编码语言推理逻辑与场景动态变化规律。
 
-<div align="center">
-<img src="assets/comparison.png" alt="Comparison of three CoT paradigms" width="90%"/>
-</div>
-
-> **(a) Explicit CoT** generates a full reasoning chain before the answer — interpretable but slow. **(b) Implicit CoT** compresses reasoning into opaque latent vectors — fast but not interpretable. **(c) OneVL (ours)** uses visual latent tokens `v` and language latent tokens `l`; during training, dual auxiliary decoders decode these into future frames and CoT text respectively. At inference, decoders are discarded and latents are **prefilled** into the prompt — matching the speed of (b) while recovering the interpretability of (a) in both vision and language.
-
-### Architecture
+### 三类思维链技术范式
 
 <div align="center">
-<img src="assets/framework.png" alt="OneVL architecture" width="90%"/>
+<img src="assets/comparison.png" alt="三类思维链范式对比" width="90%"/>
 </div>
 
-> During training, hidden states at visual latent positions are routed to the **Visual Aux. Decoder** (predicts future-frame visual tokens at t+0.5s and t+1.0s) and at language latent positions to the **Language Aux. Decoder** (reconstructs CoT text). Both decoders are discarded at inference; all latent tokens are **prefilled** into the prompt, matching answer-only AR prediction latency.
+> (a) 显式思维链：先完整生成推理过程再输出结果，可解释性强但推理速度慢
+> 
+> (b) 隐式思维链：将推理压缩为不可解读的隐式向量，速度快但无法溯源分析
+> 
+> (c) 本文OneVL模型：设置视觉隐式令牌`v`与语言隐式令牌`l`；训练阶段借助双辅助解码器，分别还原未来画面与推理文本；推理阶段舍弃解码器，将隐式表征预填充至提示词。兼顾隐式模型的高速特性，同时保留图文双维度可解释能力。
 
-OneVL augments **Qwen3-VL-4B-Instruct** with:
+### 模型架构
 
-- **Latent Token Interface** — 4 visual latent tokens + 2 language latent tokens placed in the assistant response before the answer, using existing vocabulary tokens (no new special tokens).
-- **Visual Auxiliary Decoder** — Predicts future-frame visual tokens at t+0.5s and t+1.0s from visual latent hidden states (Emu3.5 IBQ, 131k codebook), acting as a **world model** supervision signal.
-- **Language Auxiliary Decoder** — Reconstructs explicit CoT reasoning text from language latent hidden states, conditioned on ViT visual features.
-- **Prefill Inference** — Both decoders are discarded at inference; latent tokens are processed in one parallel pass with only the trajectory generated autoregressively.
+<div align="center">
+<img src="assets/framework.png" alt="OneVL模型架构" width="90%"/>
+</div>
 
-### Key Innovations
+> 训练过程中，视觉隐式位置的隐藏特征送入**视觉辅助解码器**，预测0.5秒、1秒后的场景画面令牌；语言隐式位置特征输入**语言辅助解码器**，还原推理逻辑文本。推理阶段移除两类解码器，隐式令牌一次性预载入上下文，推理耗时等同于纯结果输出模型。
 
-- **Dual-Modal Auxiliary Decoders**: A *language auxiliary decoder* reconstructs human-readable CoT reasoning from language latent tokens; a *visual auxiliary decoder* predicts future scene frames from visual latent tokens, acting as a **world model** that grounds the latents in physical scene dynamics.
-- **Prefill Inference**: All latent tokens are prefilled into the prompt context in a single parallel pass — **1.5× faster than explicit CoT on NAVSIM, 2.3× faster on ROADWork** — with latency essentially identical to answer-only AR prediction.
-- **Compression Drives Generalization**: OneVL is the **only latent CoT method that outperforms explicit autoregressive CoT** across all four benchmarks.
+模型基于**通义千问3-VL-4B-指令模型**扩展搭建，新增核心模块：
+
+- **隐式令牌交互层**：回复区预置4个视觉隐式令牌、2个语言隐式令牌，复用现有词表，无需新增特殊标记
+- **视觉辅助解码器**：依托13.1万码本的Emu3.5图像量化模型，依据视觉隐特征预判后续画面，充当场景世界模型监督信号
+- **语言辅助解码器**：结合视觉特征，从语言隐表征还原完整推理话术
+- **预填充推理机制**：推理剔除解码器，隐式令牌并行处理，仅轨迹序列自回归生成
+
+### 核心创新点
+
+1. **双模态辅助解码**：语言解码器还原可读推理逻辑，视觉解码器预判场景画面，让隐式表征贴合真实物理场景规律
+2. **预填充加速推理**：隐式表征单次并行载入上下文，在NAVSIM数据集推理速度较显式思维链提升1.5倍，道路施工场景提速2.3倍，延迟对标极简输出模型
+3. **压缩表征提升泛化性**：业内首个在四项测试基准中，综合性能全面超越显式自回归思维链的隐式推理算法
 
 ---
 
-## Open-Source Status
+## 开源资源
 
-| Component | Status |
-|-----------|--------|
-| 📄 Technical Report | ✅ [Tech report](https://arxiv.org/abs/2604.18486) |
-| ⚖️ Model Weights | ✅ [Weights](https://huggingface.co/collections/xiaomi-research/onevl-models) |
-| 🔍 Inference Code | ✅ [Code](https://github.com/xiaomi-research/onevl)|
-| 🏋️ Training Code | ✅ [Code](https://github.com/GeorgeLuImmortal/OneVL_training/tree/main) |
-
----
-
-## Results
-
-### Accuracy–Efficiency Pareto (NAVSIM & ROADWork)
-
-<div align="center">
-<img src="assets/teaser_bar.png" alt="Teaser: Accuracy-Efficiency Pareto across benchmarks" width="90%"/>
-</div>
-
-> OneVL lands in the **green-shaded optimal corner** (lowest latency, best metric) on both benchmarks. All prior latent CoT methods (COCONUT, CODI, SIM-CoT) underperform even the AR Answer baseline on driving tasks — a critical failure that OneVL overcomes.
-
-### NAVSIM — Full Comparison
-
-| Method | Model Size | PDM-score ↑ | Latency (s) ↓ | Interpretability |
-|--------|:----------:|:-----------:|:-------------:|:----------------:|
-| AdaThinkDrive | 8B | 86.20 | — | Language |
-| LaST-VLA | 8B | 87.30 | — | — |
-| AR Answer | 4B | 87.47 | <u>4.49</u> | — |
-| AR CoT+Answer | 4B | <u>88.29</u> | 6.58 | Language |
-| COCONUT | 4B | 84.84 | 5.93 | — |
-| CODI | 4B | 83.92 | 8.62 | — |
-| SIM-CoT | 4B | 84.21 | 10.86 | Language |
-| **OneVL** | **4B** | **88.84** | **4.46** | **Vision + Language** |
-
-### ROADWork — Full Comparison
-
-| Method | ADE (px) ↓ | FDE (px) ↓ | Latency (s) ↓ | Interpretability |
-|--------|:----------:|:----------:|:-------------:|:----------------:|
-| YNet | 22.68 | 80.78 | — | — |
-| AR Answer | 15.98 | 40.29 | <u>4.74</u> | — |
-| AR CoT+Answer | <u>13.18</u> | <u>29.98</u> | 10.74 | Language |
-| COCONUT | 15.44 | 38.60 | 6.06 | — |
-| CODI | 16.45 | 44.28 | 6.73 | — |
-| SIM-CoT | 16.49 | 44.32 | 6.19 | Language |
-| **OneVL** | **12.49** | **28.80** | **4.71** | **Vision + Language** |
-
-### Impromptu — Full Comparison
-
-| Method | ADE (m) ↓ | FDE (m) ↓ | Latency (s) ↓ | Interpretability |
-|--------|:---------:|:---------:|:-------------:|:----------------:|
-| Impromptu VLA | 1.60 | 4.28 | 6.10 | — |
-| AR Answer | 1.46 | 4.03 | <u>4.24</u> | — |
-| AR CoT+Answer | <u>1.42</u> | <u>3.96</u> | 6.84 | Language |
-| COCONUT | 1.49 | 4.07 | 5.27 | — |
-| CODI | 1.86 | 5.18 | 5.24 | — |
-| SIM-CoT | 2.43 | 6.10 | 5.09 | Language |
-| **OneVL** | **1.34** | **3.70** | **4.02** | **Vision + Language** |
-
-### APR1 — Full Comparison
-
-| Method | ADE (m) ↓ | FDE (m) ↓ | Latency (s) ↓ | Interpretability |
-|--------|:---------:|:---------:|:-------------:|:----------------:|
-| Cosmos-Reason | <u>2.86</u> | **7.42** | — | Language |
-| AR Answer | 3.27 | 9.59 | 3.06 | — |
-| AR CoT+Answer | 2.99 | 8.54 | 3.51 | Language |
-| COCONUT | 3.29 | 9.48 | 3.76 | — |
-| CODI | 3.22 | 9.25 | 3.85 | — |
-| SIM-CoT | 3.40 | 9.85 | 3.78 | Language |
-| **OneVL** | **2.62** | <u>7.53</u> | **3.26** | **Vision + Language** |
-
-### Text CoT Quality (NAVSIM)
-
-| Method | Meta Action Acc. ↑ | STS Score ↑ | LLM Judge ↑ | Avg. ↑ | Latency (s) ↓ |
-|--------|:-----------------:|:-----------:|:-----------:|:------:|:------:|
-| AR CoT+Answer | 73.20 | 79.75 | 81.86 | **78.27** | <u>6.58</u> |
-| SIM-CoT | 67.20 | 76.25 | 78.73 | 74.06 | 10.86 |
-| **OneVL** (lang. aux.) | 71.00 | 78.26 | 79.13 | <u>76.13</u> | **4.46** |
-
-OneVL's language auxiliary decoder recovers 97% of explicit CoT quality while running at answer-only speed.
-
-### Ablation Study (NAVSIM PDM-score)
-
-| Model Variant | Lang. Aux. Dec. | Vis. Aux. Dec. | Staged Train | PDM-score ↑ |
-|---------------|:---------------:|:--------------:|:------------:|:-----------:|
-| OneVL w/o vis. dec. | ✓ | — | ✓ | 87.97 |
-| OneVL w/o lang. dec. | — | ✓ | ✓ | 88.53 |
-| OneVL w/o staged train | ✓ | ✓ | — | 67.13 |
-| **OneVL (full)** | **✓** | **✓** | **✓** | **88.84** |
-
-Both auxiliary decoders contribute measurably; staged training is essential (without it, performance collapses to 67.13).
+| 模块 | 开放状态 |
+|----|----|
+| 📄 技术论文 | ✅ [查看论文](https://arxiv.org/abs/2604.18486) |
+| ⚖️ 模型权重 | ✅ [下载权重](https://huggingface.co/collections/xiaomi-research/onevl-models) |
+| 🔍 推理代码 | ✅ [代码仓库](https://github.com/xiaomi-research/onevl) |
+| 🏋️ 训练代码 | ✅ [训练源码](https://github.com/GeorgeLuImmortal/OneVL_training/tree/main) |
 
 ---
 
-## Qualitative Examples
+## 实验结果
 
-### NAVSIM
+### 精度与效率最优权衡（NAVSIM/ROADWork 道路施工数据集）
 
 <div align="center">
-<img src="assets/navsim_example1.png" alt="NAVSIM qualitative example" width="95%"/>
+<img src="assets/teaser_bar.png" alt="基准数据集精度效率对比" width="90%"/>
 </div>
 
-> Each plot overlays ground-truth (green) and predicted (red) trajectories on the front camera view, along with predicted future frames at t+0.5s and t+1.0s decoded from the visual auxiliary decoder, and the language CoT from the language auxiliary decoder.
+> OneVL在两项测试中均处于**最优区间**，延迟最低、预测指标最佳。过往隐式思维链算法在自动驾驶任务中表现均不及基础输出模型，本模型彻底突破该瓶颈。
 
-### ROADWork (Construction Zone Navigation)
+### NAVSIM数据集完整测评
+
+| 算法                 | 模型参数量 | 轨迹匹配分数↑ | 推理耗时(秒)↓ | 可解释维度 |
+|--------------------|:----:|:----:|:----:|:----:|
+| AdaThinkDrive      | 80亿 | 86.20 | — | 语言文本 |
+| LaST-VLA           | 80亿 | 87.30 | — | 无 |
+| 纯结果输出模型(AR Answer) | 40亿 | 87.47 | 4.49 | 无 |
+| 显式推理+结果模型(AR CoT+Answer)        | 40亿 | 88.29 | 6.58 | 语言文本 |
+| COCONUT算法          | 40亿 | 84.84 | 5.93 | 无 |
+| CODI算法             | 40亿 | 83.92 | 8.62 | 无 |
+| SIM-CoT算法          | 40亿 | 84.21 | 10.86 | 语言文本 |
+| **OneVL本文模型**      | **40亿** | **88.84** | **4.46** | **视觉+语言** |
+
+### ROADWork 道路施工场景数据集测评
+| 算法                 | 平均位移误差(像素)↓ | 终点位移误差(像素)↓ | 推理耗时(秒)↓ | 可解释维度 |
+|--------------------|:----:|:----:|:----:|:----:|
+| YNet模型             | 22.68 | 80.78 | — | 无 |
+| 纯结果输出模型(AR Answer) | 15.98 | 40.29 | 4.74 | 无 |
+| 显式推理+结果模型(AR CoT+Answer)        | 13.18 | 29.98 | 10.74 | 语言文本 |
+| COCONUT算法          | 15.44 | 38.60 | 6.06 | 无 |
+| CODI算法             | 16.45 | 44.28 | 6.73 | 无 |
+| SIM-CoT算法          | 16.49 | 44.32 | 6.19 | 语言文本 |
+| **OneVL本文模型**      | **12.49** | **28.80** | **4.71** | **视觉+语言** |
+
+### Impromptu 即兴驾驶场景数据集测评
+| 算法 | 平均位移误差(米)↓ | 终点位移误差(米)↓ | 推理耗时(秒)↓ | 可解释维度 |
+|----|:----:|:----:|:----:|:----:|
+| Impromptu VLA模型 | 1.60 | 4.28 | 6.10 | 无 |
+| 纯结果输出模型 | 1.46 | 4.03 | 4.24 | 无 |
+| 显式推理+结果模型 | 1.42 | 3.96 | 6.84 | 语言文本 |
+| COCONUT算法 | 1.49 | 4.07 | 5.27 | 无 |
+| CODI算法 | 1.86 | 5.18 | 5.24 | 无 |
+| SIM-CoT算法 | 2.43 | 6.10 | 5.09 | 语言文本 |
+| **OneVL本文模型** | **1.34** | **3.70** | **4.02** | **视觉+语言** |
+
+### APR1 路况数据集测评
+| 算法 | 平均位移误差(米)↓ | 终点位移误差(米)↓ | 推理耗时(秒)↓ | 可解释维度 |
+|----|:----:|:----:|:----:|:----:|
+| Cosmos-Reason模型 | 2.86 | 7.42 | — | 语言文本 |
+| 纯结果输出模型 | 3.27 | 9.59 | 3.06 | 无 |
+| 显式推理+结果模型 | 2.99 | 8.54 | 3.51 | 语言文本 |
+| COCONUT算法 | 3.29 | 9.48 | 3.76 | 无 |
+| CODI算法 | 3.22 | 9.25 | 3.85 | 无 |
+| SIM-CoT算法 | 3.40 | 9.85 | 3.78 | 语言文本 |
+| **OneVL本文模型** | **2.62** | 7.53 | **3.26** | **视觉+语言** |
+
+### 推理文本质量评测（NAVSIM）
+| 算法          | 动作匹配准确率↑ | 语义相似度分数↑ | 大模型评审得分↑ | 综合均分↑ | 推理耗时(秒)↓ |
+|-------------|:----:|:----:|:----:|:----:|:----:|
+| 显式推理模型(AR CoT+Answer)    | 73.20 | 79.75 | 81.86 | 78.27 | 6.58 |
+| SIM-CoT算法   | 67.20 | 76.25 | 78.73 | 74.06 | 10.86 |
+| **OneVL模型** | 71.00 | 78.26 | 79.13 | 76.13 | **4.46** |
+
+OneVL语言辅助解码器还原的推理文本质量可达显式推理模型的97%，同时保持极速推理性能。
+
+### 模块消融实验（NAVSIM轨迹分数）
+
+| 模型变体 | 语言辅助解码器 | 视觉辅助解码器 | 分阶段训练 | 轨迹匹配分数↑ |
+|----|:----:|:----:|:----:|:----:|
+| 移除视觉解码器 | 启用 | 关闭 | 启用 | 87.97 |
+| 移除语言解码器 | 关闭 | 启用 | 启用 | 88.53 |
+| 无分阶段训练 | 启用 | 启用 | 关闭 | 67.13 |
+| **完整OneVL模型** | **启用** | **启用** | **启用** | **88.84** |
+
+两类辅助解码器均对性能有正向增益，分阶段训练为模型核心必备策略，缺失后性能大幅暴跌。
+
+---
+
+## 可视化效果示例
+
+### NAVSIM驾驶场景
 
 <div align="center">
-<img src="assets/roadwork_example1.png" alt="ROADWork qualitative example" width="95%"/>
+<img src="assets/navsim_example1.png" alt="NAVSIM场景可视化效果" width="95%"/>
+</div>
+
+> 图中绿色为真实行驶轨迹，红色为模型预测轨迹；同步展示视觉解码器生成的0.5秒、1秒预判画面，以及语言模块输出的驾驶推理逻辑。
+
+### 道路施工区域通行场景
+
+<div align="center">
+<img src="assets/roadwork_example1.png" alt="施工路段可视化效果" width="95%"/>
 </div>
 
 ---
 
-## Environment Setup
+## 环境部署
 
-**Requirements:** Python 3.10+, CUDA GPU (≥16 GB VRAM recommended for inference with aux decoders).
+**运行要求**：Python 3.10及以上版本，英伟达CUDA显卡；推理建议显存不低于16GB
 
 ```bash
-# 1. Create and activate virtual environment
+# 1. 创建并激活虚拟环境
 uv venv venv/onevl --python 3.12
 source venv/onevl/bin/activate
 
-# 2. Install dependencies
+# 2. 安装依赖库
 pip install -r requirements.txt
 ```
 
-Core packages (`requirements/framework.txt`):
+核心依赖清单(`requirements/framework.txt`)：
 
 ```
-transformers>=4.57.0,<5.4.0   # Qwen3VLForConditionalGeneration requires ≥4.57.0
+transformers>=4.57.0,<5.4.0   # 模型运行最低版本要求
 trl>=0.15,<0.29
 peft>=0.11,<0.19
 deepspeed<0.19
@@ -187,143 +191,97 @@ numpy
 pillow
 ```
 
-Install ms-swift separately (see [Training → Quick Start](#quick-start)):
+单独安装模型加速工具(see [Training → Quick Start](#quick-start))：
+
 ```bash
 pip install git+https://github.com/modelscope/ms-swift.git#egg=ms-swift[all]
 ```
 
-> **Flash-Attention:** Install the wheel matching your CUDA/PyTorch version from the [flash-attention releases page](https://github.com/Dao-AILab/flash-attention/releases).
+**快速注意力组件**：根据本机CUDA、PyTorch版本，在官方发行页下载对应安装包部署 [flash-attention releases page](https://github.com/Dao-AILab/flash-attention/releases) 。
 
 ---
 
-## Training
+## 模型训练
 
-### Quick Start
+### 快速上手
 
-Training OneVL follows a **3-stage pipeline** on top of [ms-swift](https://github.com/modelscope/ms-swift). All scripts auto-detect the number of GPUs and support multi-node via `NNODES` / `NODE_RANK` / `MASTER_ADDR` environment variables.
+模型依托 [ms-swift](https://github.com/modelscope/ms-swift) 框架采用**三阶段训练流程**，脚本自动识别显卡数量，支持多机分布式训练。
 
-#### Prerequisites
+#### 前期准备
 
-1. **Install ms-swift** (and its dependencies):
+1. **Install ms-swift** (and its dependencies) / 部署框架依赖
 
 ```bash
 pip install -e .
-# Install flash-attn matching your CUDA version from:
+# 适配版本安装快速注意力组件 Install flash-attn matching your CUDA version from:
 # https://github.com/Dao-AILab/flash-attention/releases
 ```
 
-2. **Download model weights** (base VLM + visual aux decoder):
+2. 下载基础模型权重(base VLM + visual aux decoder):
 
-| Model | HuggingFace |
-|-------|-------------|
-| Qwen3-VL-4B-Instruct | [Qwen/Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) |
-| OneVL model weights | [xiaomi-research/onevl-models](https://huggingface.co/collections/xiaomi-research/onevl-models/) |
+| 模型名称 | 开源地址                                                                                         |
+|----|----------------------------------------------------------------------------------------------|
+| 通义千问3-VL-4B指令模型 | [Qwen3-VL-4B-Instruct 模型下载](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct)                |
+| OneVL预训练权重 | [OneVL model weights 模型合集](https://huggingface.co/collections/xiaomi-research/onevl-models/) |
 
-3. **Prepare demo data**: 100-sample demo datasets are provided under `demo_data/navsim/` for quick verification.
+3. 测试数据集：工程目录内置100条样本测试集，可快速验证训练流程。
 
----
+#### 阶段0：预热监督微调
 
-#### Stage 0 — Warm-up SFT
-
-Standard supervised fine-tuning on answer-only or CoT data. Uses the vanilla `qwen3_vl` model type (no latent tokens yet).
+仅针对结果或推理文本做基础微调，暂不启用隐式令牌结构。
 
 ```bash
-
+# 常规训练脚本
 bash run_script/train/navsim/sft_distributed_stage0_vis4_txt2_bs64.sh
 
-# Or CoT baseline:
+# 显式推理基线训练
 bash run_script/train/navsim/sft_distributed_qwen3vl_cot_64.sh
-# Or answer-only baseline:
+
+# 纯结果输出基线训练
 bash run_script/train/navsim/sft_distributed_qwen3vl_answer_bs64.sh
 ```
 
-Key config in the script:
-```bash
-MODEL_PATH="<path/to/Qwen3-VL-4B-Instruct>"
-DATASET_PATH="demo_data/navsim/navsim_answer_demo100.jsonl"  # replace with full dataset
-# --model_type qwen3_vl   (standard SFT, no latent CoT)
-# --deepspeed zero2
-```
+#### 阶段1：辅助解码器专项训练
 
----
-
-#### Stage 1 — Train Auxiliary Decoders (main model frozen)
-
-Initialize the latent CoT structure. The main LLM is **frozen**; only the language and visual auxiliary decoders are trained.
+初始化隐式推理结构，冻结主干大模型，仅训练图文辅助解码器。
 
 ```bash
 bash run_script/train/navsim/sft_distributed_stage1_vis4_txt2_bs64.sh
 ```
 
-Key config to set before running:
-```bash
-MODEL_PATH="<path/to/stage0-checkpoint>"           # output from Stage 0
-VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"  # pre-trained visual aux decoder
+#### 阶段2：全模型联合微调
 
-# Latent token counts: 4 visual + 2 language
-export LATENT_COT_C_THOUGHT_VISUAL=4
-export LATENT_COT_C_THOUGHT=2
-
-# Freeze main model, train aux decoders only
-export LATENT_COT_FREEZE_MAIN_MODEL=true
-export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
-export LATENT_COT_FREEZE_AUX_DECODER=false
-```
-
----
-
-#### Stage 2 — End-to-End Fine-tuning
-
-Unfreeze all components and jointly optimize the full model.
+解锁所有模块参数，整体协同优化模型性能。
 
 ```bash
 bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 ```
 
-Key config to set before running:
-```bash
-MODEL_PATH="<path/to/stage1-checkpoint>"           # output from Stage 1
-VISUAL_AUX_MODEL_PATH="<path/to/visual-aux-decoder>"
+#### 多机分布式训练
 
-# Unfreeze everything
-export LATENT_COT_FREEZE_MAIN_MODEL=false
-export LATENT_COT_FREEZE_VISUAL_AUX_DECODER=false
-export LATENT_COT_FREEZE_AUX_DECODER=false
-# --deepspeed zero2
-# --num_train_epochs 5
-```
-
----
-
-#### Multi-node Training
-
-All scripts read standard distributed env vars. To run on 2 nodes (8 GPUs each):
+双节点、每节点8卡训练示例：
 
 ```bash
-# Node 0 (master)
-NNODES=2 NODE_RANK=0 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
+# 主节点执行
+NNODES=2 NODE_RANK=0 MASTER_ADDR=主节点IP bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 
-# Node 1
-NNODES=2 NODE_RANK=1 MASTER_ADDR=<node0-ip> bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
+# 从节点执行
+NNODES=2 NODE_RANK=1 MASTER_ADDR=主节点IP bash run_script/train/navsim/sft_distributed_stage2_vis4_txt2_bs64.sh
 ```
 
-> **Tip:** In cluster environments, the vars `WORKER_NUM`, `ROLE_INDEX`, `WORKER_0_HOST`, and `WORKER_0_PORT` are automatically picked up by the scripts, you should change this to fit your environment.
+#### 训练阶段汇总
+
+| 训练阶段 | 启动脚本 | 冻结模块 | 训练模块 | 优化策略 |
+|----|----|----|----|----|
+| 预热微调 | sft_distributed_qwen3vl_answer_bs64.sh | 无 | 全模型 | 显存分级优化2 |
+| 解码器初始化 | sft_distributed_stage1_vis4_txt2_bs64.sh | 主干模型、视觉编码器 | 双辅助解码器 | 显存分级优化2 |
+| 全局联合调优 | sft_distributed_stage2_vis4_txt2_bs64.sh | 无 | 全模型 | 显存分级优化2 |
 
 ---
 
-#### Training Summary
+## 引用格式
 
-| Stage | Script | Frozen | Trainable | DeepSpeed |
-|-------|--------|--------|-----------|-----------|
-| 0 — Warm-up SFT | `sft_distributed_qwen3vl_answer_bs64.sh` | — | Full model | ZeRO-2 |
-| 1 — Aux decoder init | `sft_distributed_stage1_vis4_txt2_bs64.sh` | Main LLM + ViT | Aux decoders | ZeRO-2 |
-| 2 — E2E fine-tuning | `sft_distributed_stage2_vis4_txt2_bs64.sh` | — | Full model | ZeRO-2 |
-
----
-
-## Citation
-
-If you find this work useful, please cite:
+如若使用本项目成果，引用标注如下：
 
 ```bibtex
 @article{lu2026onevl,
@@ -337,17 +295,17 @@ If you find this work useful, please cite:
 
 ---
 
-## License
+## 开源协议
 
-This project is released under the [Apache 2.0 License](LICENSE).
+本项目遵循 [Apache 2.0 License](LICENSE).
 
-Model weights are built on [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) and the visual tokenizer is from [Emu3.5-VisionTokenizer](https://huggingface.co/BAAI/Emu3.5-VisionTokenizer); please refer to their respective licenses as well.
+Model weights are built on [Qwen3-VL-4B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct) and the visual tokenizer is from [Emu3.5-VisionTokenizer](https://huggingface.co/BAAI/Emu3.5-VisionTokenizer); 使用时需同步遵守对应原始许可条款.
 
 ---
 
-## Acknowledgements
+## 致谢
 
-- [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) — backbone VLM
-- [Emu3.5](https://github.com/baaivision/Emu3) — IBQ visual tokenizer
-- [AdaThinkDrive](https://github.com/luo-yc17/AdaThinkDrive/tree/main) — NAVSIM CoT annotations
-- [NAVSIM](https://github.com/autonomousvision/navsim), [ROADWork](https://github.com/vita-epfl/roadwork), [Impromptu](https://github.com/Xiaomi-CHI/Impromptu) — evaluation benchmarks
+- [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) — backbone VLM / 主干视觉语言模型底座
+- [Emu3.5](https://github.com/baaivision/Emu3) — IBQ visual tokenizer / 图像量化编码工具
+- [AdaThinkDrive](https://github.com/luo-yc17/AdaThinkDrive/tree/main) — NAVSIM CoT annotations / 驾驶推理标注数据集
+- [NAVSIM](https://github.com/autonomousvision/navsim), [ROADWork](https://github.com/vita-epfl/roadwork), [Impromptu](https://github.com/Xiaomi-CHI/Impromptu) — evaluation benchmarks / 算法评测基准平台
