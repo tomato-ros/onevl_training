@@ -166,18 +166,30 @@ OneVL语言辅助解码器还原的推理文本质量可达显式推理模型的
 **运行要求**：Python 3.10及以上版本，英伟达CUDA显卡；推理建议显存不低于16GB
 
 ```bash
-# 1. 创建并激活虚拟环境
+# 1. 使用 venv 创建并激活虚拟环境
 uv venv venv/onevl --python 3.12
 source venv/onevl/bin/activate
 
-# 2. 安装依赖库
-pip install -r requirements.txt
+# 或使用 conda 
+conda create -n onevl python=3.12 -y
+conda activate onevl
+
+# 2. 安装依赖库(推荐使用加速源镜像)
+
+# 清华源(推荐)
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+# 阿里云
+pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+
+# 豆瓣
+pip install -r requirements.txt -i http://pypi.douban.com/simple/
 ```
 
 核心依赖清单(`requirements/framework.txt`)：
 
 ```
-transformers>=4.57.0,<5.4.0   # 模型运行最低版本要求
+transformers>=4.57.6,<5.4.0   # 模型运行最低版本要求
 trl>=0.15,<0.29
 peft>=0.11,<0.19
 deepspeed<0.19
